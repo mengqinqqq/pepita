@@ -56,6 +56,11 @@ def extract_metadata(filename):
 
 	return metadata
 
+def well_to_xy(well):
+	col = well[0]
+	row = int(well[1:])
+
+	return COLUMNS.index(col)*10 + ROWS.index(row) + 1
 
 def xy_to_well(xy_num):
 	xy_num -= 1
