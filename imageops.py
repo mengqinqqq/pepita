@@ -49,10 +49,7 @@ def get_contours_by_area(img, threshold=-1, lower=0, upper=2**32):
 		warnings.simplefilter("ignore", np.VisibleDeprecationWarning)
 		return np.multiply(contours, np.minimum(areas > lower, areas < upper))# ugly: consider fix
 
-def get_fish_mask(filename, verbose=False, silent=True):
-	with warnings.catch_warnings():
-		warnings.simplefilter("ignore", UserWarning)
-		img = imageio.imread(filename)
+def get_fish_mask(img, silent=True, verbose=False):
 	show(img, verbose)
 	steps = (
 		rescale_brightness,
@@ -127,6 +124,9 @@ def _test():
 if __name__ == '__main__':
 	if len(sys.argv) > 1:
 		for filename in sys.argv[1:]:
-			get_fish_mask(filename, True)
+			with warnings.catch_warnings():
+				warnings.simplefilter("ignore", UserWarning)
+				image = imageio.imread(filename)
+			get_fish_mask(image, True)
 	else:
 		raise TypeError('Invoke with an argument, i.e. the name of a file or files to process.')

@@ -1,30 +1,53 @@
+import io
+from PIL import Image
+import sys
 import xlsxwriter
+
 import analyze6
+import imageops
 
 def make(filenames):
-	workbook = xlsxwriter.Workbook('juxtapose.xlsx')
+	workbook = xlsxwriter.Workbook('juxtapose.xlsx', {'nan_inf_to_errors': True})
 	worksheet = workbook.add_worksheet()
 
-	# pd dataframe of (plate, column, row, normalized_value)
-	normalized_results = analyze6.quantify(filenames)
+	worksheet.set_column('C:F', 68)
 
-	# worksheet.set_column('C:C', 30) # widen
-	# worksheet.set_column('D:D', 30) # widen
+	images = analyze6.quantify(filenames)
 
 	for i in range(len(filenames)):
-		row = normalized_results.iloc[i]
+		worksheet.set_row(i, 275)
+		image = images[i]
 
-		worksheet.write(i + 1, 0, row['plate'])
-		worksheet.write(i + 1, 1, row['well'])
-		worksheet.insert_image(i + 1, 2, scaled_down_bf_img)
-		worksheet.insert_image(i + 1, 3, scaled_down_fl_img)
-		worksheet.insert_image(i + 1, 4, masked_scaled_down_bf_img)
-		worksheet.insert_image(i + 1, 5, masked_scaled_down_fl_img)
-		worksheet.write(i + 1, 6, row['value'])
-		# H:H - (manual) bf acceptable (-1, 0, 1)
-		# I:I - (manual) fl acceptable (-1, 0, 1)
+		worksheet.write(i, 0, image.plate)
+		worksheet.write(i, 1, image.well)
+		worksheet.write(i, 2, 'XY' + str(image.xy))
+
+		# non-rescaled it's often too dark, rescaled it'll be inaccurate...
+		# downscaled_bf_img = imageops.resize(image.bf_img, 0.25)
+		# downscaled_fl_img = imageops.resize(image.fl_img, 0.25)
+		downscaled_bf_img = imageops.rescale_brightness(imageops.resize(image.bf_img, 0.25))
+		downscaled_fl_img = imageops.rescale_brightness(imageops.resize(image.fl_img, 0.25))
+		downscaled_mask = imageops.resize(image.mask, 0.25)
+		downscaled_bf_img_masked = imageops.apply_mask(downscaled_bf_img, downscaled_mask)
+		downscaled_fl_img_masked = imageops.apply_mask(downscaled_fl_img, downscaled_mask)
+
+		worksheet.insert_image(i, 3, 'bf_img', {'image_data': img_to_buffer(downscaled_bf_img)})
+		worksheet.insert_image(i, 4, 'fl_img', {'image_data': img_to_buffer(downscaled_fl_img)})
+		worksheet.insert_image(
+			i, 5, 'bf_img_masked', {'image_data': img_to_buffer(downscaled_bf_img_masked)}
+		)
+		worksheet.insert_image(
+			i, 6, 'fl_img_masked', {'image_data': img_to_buffer(downscaled_fl_img_masked)}
+		)
+
+		worksheet.write(i, 7, image.normalized_value)
 
 	workbook.close()
+
+def img_to_buffer(img):
+	bytes_io = io.BytesIO()
+	Image.fromarray(img).save(bytes_io, format='png')
+	return bytes_io
 
 if __name__ == '__main__':
 	if len(sys.argv) > 1:
