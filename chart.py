@@ -108,7 +108,7 @@ def boxplot():
 	axs[2, 2].boxplot(data9, labels=labels, meanline=True, showmeans=True, whis=(0, 100))
 
 	fig.subplots_adjust(hspace=0.5, wspace=0.5)
-	plt.savefig("chart.png")
+	plt.savefig('chart.png')
 
 if __name__ == '__main__':
 	if len(sys.argv) <= 1:

@@ -18,7 +18,6 @@ with open('keyence_BZX800_lenses.csv', encoding='utf8', newline='') as f:
 			'Working Distance': float(working_distance)
 		}
 
-
 def extract_metadata(filename):
 	with open(filename, 'br') as f:
 		file_content = f.read()
@@ -62,7 +61,6 @@ def xy_to_well(xy_num):
 	xy_num -= 1
 
 	return COLUMNS[xy_num // 10] + str(ROWS[xy_num % 10])
-
 
 def _getxml(element, *fields):
 	for field in fields:
