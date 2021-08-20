@@ -3,9 +3,12 @@
 
 import argparse
 import imageio
+import matplotlib.pyplot as plt
 from multiprocessing import Pool
 import numpy as np
+import pandas as pd
 import re
+import seaborn as sns
 import sys
 import warnings
 
@@ -70,8 +73,23 @@ class Image:
 			self.normalized_value = np.nan
 		return self
 
-def quantify(image_filenames):
-	images = [Image(filename) for filename in image_filenames]
+def chart(results, chartfile):
+	sns.set_theme(style='whitegrid')
+
+	data = pd.DataFrame({
+		'brightness': [value for values in results.values() for value in values],
+		'column': [key for key, values in results.items() for _ in values],
+	})
+
+	sns.swarmplot(x='column', y='brightness', data=data)
+	sns.boxplot(x='column', y='brightness', data=data, meanline=True,
+		meanprops={'color': '#0f0f0f80', 'ls': '-', 'lw': 1}, medianprops={'visible': False},
+		showbox=False, showcaps=False, showfliers=False, showmeans=True,
+		whiskerprops={'visible': False})
+	plt.savefig(chartfile)
+
+def quantify(imagefiles):
+	images = [Image(filename) for filename in imagefiles]
 	_ = Pool(8).map(Image.get_raw_value, images)
 	control_values = _calculate_control_values(images)
 	return [image.normalize(control_values) for image in images]
@@ -94,15 +112,18 @@ def _calculate_control_values(images):
 
 	return ctrl_vals
 
-def main(image_filenames, silent=False):
-	results = []
-	images = quantify(image_filenames)
+def main(imagefiles, chartfile=None, silent=False):
+	results = {}
+	images = quantify(imagefiles)
 
 	for col in keyence.COLUMNS:
 		relevant_values = [img.normalized_value for img in images if img.column == col]
-		results.append(relevant_values)
+		results[col] = relevant_values
 		if not silent:
 			print(col, np.nanmean(relevant_values), relevant_values)
+
+	if chartfile:
+		chart(results, chartfile)
 
 	return results
 
@@ -111,9 +132,11 @@ if __name__ == '__main__':
 		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the'
 			'purposes of measuring hair cell damage.'))
 
-	parser.add_argument('image_filenames',
+	parser.add_argument('imagefiles',
 		nargs='+',
 		help='The absolute or relative filenames where the relevant images can be found.')
+	parser.add_argument('--chartfile',
+		help='If supplied, the resulting numbers will be charted at the given filename.')
 	parser.add_argument('--silent',
 		action='store_true',
 		help=('If present, printed output will be suppressed. More convenient for programmatic'
