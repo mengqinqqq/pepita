@@ -88,6 +88,21 @@ def chart(results, chartfile):
 		whiskerprops={'visible': False})
 	plt.savefig(chartfile)
 
+def main(imagefiles, chartfile=None, silent=False):
+	results = {}
+	images = quantify(imagefiles)
+
+	for col in keyence.COLUMNS:
+		relevant_values = [img.normalized_value for img in images if img.column == col]
+		results[col] = relevant_values
+		if not silent:
+			print(col, np.nanmean(relevant_values), relevant_values)
+
+	if chartfile:
+		chart(results, chartfile)
+
+	return results
+
 def quantify(imagefiles):
 	images = [Image(filename) for filename in imagefiles]
 	_ = Pool(8).map(Image.get_raw_value, images)
@@ -112,20 +127,9 @@ def _calculate_control_values(images):
 
 	return ctrl_vals
 
-def main(imagefiles, chartfile=None, silent=False):
-	results = {}
-	images = quantify(imagefiles)
-
-	for col in keyence.COLUMNS:
-		relevant_values = [img.normalized_value for img in images if img.column == col]
-		results[col] = relevant_values
-		if not silent:
-			print(col, np.nanmean(relevant_values), relevant_values)
-
-	if chartfile:
-		chart(results, chartfile)
-
-	return results
+#
+# main
+#
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
