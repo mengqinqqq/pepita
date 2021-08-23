@@ -133,17 +133,17 @@ def _calculate_control_values(images):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
-		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the'
+		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the '
 			'purposes of measuring hair cell damage.'))
 
 	parser.add_argument('imagefiles',
 		nargs='+',
 		help='The absolute or relative filenames where the relevant images can be found.')
-	parser.add_argument('--chartfile',
+	parser.add_argument('-c', '--chartfile',
 		help='If supplied, the resulting numbers will be charted at the given filename.')
-	parser.add_argument('--silent',
+	parser.add_argument('-s', '--silent',
 		action='store_true',
-		help=('If present, printed output will be suppressed. More convenient for programmatic'
+		help=('If present, printed output will be suppressed. More convenient for programmatic '
 			'execution.'))
 
 	args = parser.parse_args(sys.argv[1:])
