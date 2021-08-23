@@ -2,6 +2,7 @@
 # requires: pip install opencv-python
 
 import argparse
+import csv
 import imageio
 import matplotlib.pyplot as plt
 from multiprocessing import Pool
@@ -16,7 +17,7 @@ import imageops
 import keyence
 
 class Image:
-	def __init__(self, filename):
+	def __init__(self, filename, group=None):
 		self.fl_filename = filename
 		self.bf_filename = filename.replace('CH1', 'CH4')
 
@@ -27,9 +28,7 @@ class Image:
 		self.plate = match.group(1)
 		self.xy = int(match.group(2))
 
-		self.well = keyence.xy_to_well(self.xy)
-		self.column = self.well[0]
-		self.row = self.well[1:]
+		self.group = group if group else keyence.xy_to_well(self.xy)[0]
 
 		self.bf_img = None
 		self.fl_img = None
@@ -68,7 +67,7 @@ class Image:
 			val = float(self.get_raw_value() * 100 // control_values[self.plate])
 			self.normalized_value = val if val < 150 else np.nan # discard results >=150% of ctrl
 		except ZeroDivisionError:
-			print('ERROR: Plate', self.plate, 'column', self.column, 'with value',
+			print('ERROR: Plate', self.plate, 'group', self.group, 'with value',
 				self.get_raw_value(), 'has control value', control_values[self.plate])
 			self.normalized_value = np.nan
 		return self
@@ -78,39 +77,69 @@ def chart(results, chartfile):
 
 	data = pd.DataFrame({
 		'brightness': [value for values in results.values() for value in values],
-		'column': [key for key, values in results.items() for _ in values],
+		'group': [key for key, values in results.items() for _ in values],
 	})
 
-	sns.swarmplot(x='column', y='brightness', data=data)
-	sns.boxplot(x='column', y='brightness', data=data, meanline=True,
+	sns.swarmplot(x='group', y='brightness', data=data)
+	sns.boxplot(x='group', y='brightness', data=data, meanline=True,
 		meanprops={'color': '#0f0f0f80', 'ls': '-', 'lw': 1}, medianprops={'visible': False},
 		showbox=False, showcaps=False, showfliers=False, showmeans=True,
 		whiskerprops={'visible': False})
 	plt.savefig(chartfile)
 
-def main(imagefiles, chartfile=None, silent=False):
-	results = {}
-	images = quantify(imagefiles)
+def get_schematic(platefile, target_count, plate_ignore):
+	if '' not in plate_ignore:
+		plate_ignore.append('')
 
-	for col in keyence.COLUMNS:
-		relevant_values = [img.normalized_value for img in images if img.column == col]
-		results[col] = relevant_values
+	with open(platefile, encoding='utf8', newline='') as f:
+		schematic = [[well for well in row if well not in plate_ignore] for row in csv.reader(f)]
+
+	count = sum([len(row) for row in schematic])
+	if count != target_count:
+		del schematic[0]
+		for row in schematic:
+			del row[0]
+		count = sum([len(row) for row in schematic])
+		if count != target_count:
+			raise ValueError('Schematic does not have same number of cells as images provided')
+
+	return [well for row in schematic for well in row]
+
+def main(imagefiles, chartfile=None, platefile=None, plate_control=['B'], plate_ignore=[],
+		silent=False):
+	results = {}
+
+	if not platefile:
+		groups = keyence.COLUMNS
+		images = quantify(imagefiles, plate_control)
+	else:
+		schematic = get_schematic(platefile, len(imagefiles), plate_ignore)
+		groups = list(dict.fromkeys(schematic))
+		images = quantify(imagefiles, plate_control, schematic=schematic)
+
+	for group in groups:
+		relevant_values = [img.normalized_value for img in images if img.group == group]
+		results[group] = relevant_values
 		if not silent:
-			print(col, np.nanmean(relevant_values), relevant_values)
+			print(group, np.nanmean(relevant_values), relevant_values)
 
 	if chartfile:
 		chart(results, chartfile)
 
 	return results
 
-def quantify(imagefiles):
-	images = [Image(filename) for filename in imagefiles]
+def quantify(imagefiles, plate_control=['B'], schematic=None):
+	if schematic:
+		images = [Image(filename, group) for filename, group in zip(imagefiles, schematic)]
+	else:
+		images = [Image(filename) for filename in imagefiles]
+
 	_ = Pool(8).map(Image.get_raw_value, images)
-	control_values = _calculate_control_values(images)
+	control_values = _calculate_control_values(images, plate_control)
 	return [image.normalize(control_values) for image in images]
 
-def _calculate_control_values(images):
-	ctrl_imgs = [img for img in images if img.column == 'B']
+def _calculate_control_values(images, plate_control):
+	ctrl_imgs = [img for img in images if img.group in plate_control]
 	ctrl_vals = {}
 
 	for plate in np.unique([img.plate for img in ctrl_imgs]):
@@ -141,6 +170,25 @@ if __name__ == '__main__':
 		help='The absolute or relative filenames where the relevant images can be found.')
 	parser.add_argument('-c', '--chartfile',
 		help='If supplied, the resulting numbers will be charted at the given filename.')
+
+	parser.add_argument('-p', '--platefile',
+		help='CSV file containing a schematic of the plate from which the given images were '
+			'taken. Row and column headers are optional. The cell values are essentially just '
+			'arbitrary labels: results will be grouped and charted according to the supplied '
+			'values.')
+	parser.add_argument('-pc', '--plate-control',
+		default=['B'],
+		nargs='*',
+		help='Labels to treat as the control condition in the plate schematic. These wells are '
+			'used to normalize all values in the plate for more interpretable results. Any number '
+			'of values may be passed.')
+	parser.add_argument('-pi', '--plate-ignore',
+		default=[],
+		nargs='*',
+		help='Labels to ignore (treat as null/empty) in the plate schematic. Empty cells will'
+			'automatically be ignored, but any other null values (e.g. "[empty]") must be '
+			'specified here. Any number of values may be passed.')
+
 	parser.add_argument('-s', '--silent',
 		action='store_true',
 		help=('If present, printed output will be suppressed. More convenient for programmatic '
