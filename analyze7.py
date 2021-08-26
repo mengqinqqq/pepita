@@ -85,6 +85,8 @@ def chart(results, chartfile):
 		meanprops={'color': '#0f0f0f80', 'ls': '-', 'lw': 1}, medianprops={'visible': False},
 		showbox=False, showcaps=False, showfliers=False, showmeans=True,
 		whiskerprops={'visible': False})
+	plt.xticks(rotation=45)
+	plt.tight_layout()
 	plt.savefig(chartfile)
 
 def get_schematic(platefile, target_count, plate_ignore):
