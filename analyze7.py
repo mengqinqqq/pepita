@@ -122,7 +122,9 @@ def main(imagefiles, chartfile=None, platefile=None, plate_control=['B'], plate_
 		relevant_values = [img.normalized_value for img in images if img.group == group]
 		results[group] = relevant_values
 		if not silent:
-			print(group, np.nanmean(relevant_values), relevant_values)
+			with warnings.catch_warnings():
+				warnings.simplefilter("ignore", RuntimeWarning)
+				print(group, np.nanmean(relevant_values), relevant_values)
 
 	if chartfile:
 		chart(results, chartfile)
@@ -143,7 +145,9 @@ def _calculate_control_values(images, plate_control):
 	for plate in np.unique([img.plate for img in ctrl_imgs]):
 		ctrl_results = np.array([img.get_raw_value() for img in ctrl_imgs if img.plate == plate])
 		while True:
-			ctrl_vals[plate] = float(np.nanmean(ctrl_results))
+			with warnings.catch_warnings():
+				warnings.simplefilter("ignore", RuntimeWarning)
+				ctrl_vals[plate] = float(np.nanmean(ctrl_results))
 			upper = ctrl_vals[plate] * 1.5
 			lower = ctrl_vals[plate] * 0.5
 
