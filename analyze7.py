@@ -17,7 +17,7 @@ import imageops
 import keyence
 
 class Image:
-	def __init__(self, filename, group):
+	def __init__(self, filename, group, debug=0):
 		self.fl_filename = filename
 		self.bf_filename = filename.replace('CH1', 'CH4')
 
@@ -29,6 +29,7 @@ class Image:
 		self.xy = int(match.group(2))
 
 		self.group = group
+		self.debug = debug
 
 		self.bf_img = None
 		self.fl_img = None
@@ -50,14 +51,16 @@ class Image:
 				self.fl_img = imageio.imread(self.fl_filename)[:,:,1]
 		return self.fl_img
 
-	def get_mask(self, silent=True, verbose=False):
+	def get_mask(self):
 		if self.mask is None:
-			self.mask = imageops.get_fish_mask(self.get_bf_img(), silent, verbose)
+			self.mask = imageops.get_fish_mask(
+				self.get_bf_img(), self.debug < 1, self.debug >= 2,
+				'{}_XY{:02d}'.format(self.plate, self.xy))
 		return self.mask
 
-	def get_raw_value(self, silent=True, verbose=False):
+	def get_raw_value(self):
 		if self.value is None:
-			fl_img_masked = imageops.apply_mask(self.get_fl_img(), self.get_mask(silent, verbose))
+			fl_img_masked = imageops.apply_mask(self.get_fl_img(), self.get_mask())
 			total = fl_img_masked.sum(dtype=np.uint64, where=(fl_img_masked>5_000))
 			self.value = total if total > 0 else np.nan
 		return self.value
@@ -110,13 +113,13 @@ def get_schematic(platefile, target_count, plate_ignore):
 
 	return [well for row in schematic for well in row]
 
-def main(imagefiles, chartfile=None, platefile=None, plate_control=['B'], plate_ignore=[],
+def main(imagefiles, chartfile=None, debug=0, platefile=None, plate_control=['B'], plate_ignore=[],
 		silent=False):
 	results = {}
 
 	schematic = get_schematic(platefile, len(imagefiles), plate_ignore)
 	groups = list(dict.fromkeys(schematic))
-	images = quantify(imagefiles, plate_control, schematic=schematic)
+	images = quantify(imagefiles, plate_control, debug=debug, schematic=schematic)
 
 	for group in groups:
 		relevant_values = [img.normalized_value for img in images if img.group == group]
@@ -131,8 +134,8 @@ def main(imagefiles, chartfile=None, platefile=None, plate_control=['B'], plate_
 
 	return results
 
-def quantify(imagefiles, plate_control=['B'], schematic=None):
-	images = [Image(filename, group) for filename, group in zip(imagefiles, schematic)]
+def quantify(imagefiles, plate_control=['B'], debug=0, schematic=None):
+	images = [Image(filename, group, debug) for filename, group in zip(imagefiles, schematic)]
 
 	_ = Pool(8).map(Image.get_raw_value, images)
 	control_values = _calculate_control_values(images, plate_control)
@@ -187,10 +190,16 @@ if __name__ == '__main__':
 	parser.add_argument('-pi', '--plate-ignore',
 		default=[],
 		nargs='*',
-		help='Labels to ignore (treat as null/empty) in the plate schematic. Empty cells will'
+		help='Labels to ignore (treat as null/empty) in the plate schematic. Empty cells will '
 			'automatically be ignored, but any other null values (e.g. "[empty]") must be '
 			'specified here. Any number of values may be passed.')
 
+	parser.add_argument('-d', '--debug',
+		action='count',
+		default=0,
+		help=('Indicates intermediate processing images should be output for troubleshooting '
+			'purposes. Including this argument once will yield one intermediate image per input '
+			'file, twice will yield several intermediate images per input file.'))
 	parser.add_argument('-s', '--silent',
 		action='store_true',
 		help=('If present, printed output will be suppressed. More convenient for programmatic '

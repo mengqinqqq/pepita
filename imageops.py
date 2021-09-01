@@ -6,6 +6,8 @@ import sys
 import time
 import warnings
 
+LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/'
+
 def apply_mask(img, mask):# mask should have black background, white foreground
 	img_type = _get_bit_depth(img)
 	return np.minimum(img, np.where(mask == 255, img_type[1], 0).astype(img_type[0]))
@@ -49,35 +51,38 @@ def get_contours_by_area(img, threshold=-1, lower=0, upper=2**32):
 		warnings.simplefilter("ignore", np.VisibleDeprecationWarning)
 		return np.multiply(contours, np.minimum(areas > lower, areas < upper))# ugly: consider fix
 
-def get_fish_mask(img, silent=True, verbose=False):
-	show(img, verbose)
+def get_fish_mask(img, silent=True, verbose=False, v_file_prefix=''):
+	show(img, verbose, v_file_prefix=v_file_prefix)
 	steps = (
 		rescale_brightness,
 		lambda img_i: binarize(img_i, threshold=2**14),
 		lambda img_i: apply_mask(
-			img_i, get_size_mask(img, erosions=10, threshold=2**12, lower=2**15, verbose=verbose)),
+			img_i, get_size_mask(img, erosions=10, threshold=2**12, lower=2**15, verbose=verbose,
+				v_file_prefix=v_file_prefix)),
 		lambda img_i: close(img_i, size=6, iterations=16),
 		lambda img_i: dilate(img_i, size=5, iterations=6),
 		lambda img_i: get_size_mask(
-			img_i, erosions=4, threshold=-1, lower=2**15, upper=2**19, verbose=verbose),
+			img_i, erosions=4, threshold=-1, lower=2**15, upper=2**19, verbose=verbose,
+			v_file_prefix=v_file_prefix),
 		invert,
 		lambda img_i: get_aspect_mask(img_i, target_ratio=5, error_bound=0.5, verbose=verbose),
 		invert,
 	)
-	mask = _get_mask(img, steps, verbose)
+	mask = _get_mask(img, steps, verbose, v_file_prefix=v_file_prefix)
 	if not verbose and not silent:
-		show(img)
-		show(apply_mask(img, mask))
+		show(img, v_file_prefix=v_file_prefix)
+		show(apply_mask(img, mask), v_file_prefix=v_file_prefix)
 	return mask
 
-def get_size_mask(img, erosions=0, threshold=2**7, lower=0, upper=2**32, verbose=False):
+def get_size_mask(img, erosions=0, threshold=2**7, lower=0, upper=2**32, verbose=False,
+		v_file_prefix=''):
 	contours = get_contours_by_area(img, threshold, lower, upper)
 	steps = (
 		lambda img_i: cv.drawContours(
 			np.ones(img_i.shape, dtype=np.uint8)*255, contours, -1, (0,255,0), cv.FILLED),
 		lambda img_i: erode(img_i, size=4, iterations=erosions),
 	)
-	return _get_mask(img, steps, verbose)
+	return _get_mask(img, steps, verbose, v_file_prefix=v_file_prefix)
 
 def invert(img):
 	return np.subtract(_get_bit_depth(img)[1], img)
@@ -89,10 +94,10 @@ def rescale_brightness(img):
 def resize(img, factor):
 	return cv.resize(img, None, fx=factor, fy=factor)
 
-def show(img, verbose=True):
+def show(img, verbose=True, v_file_prefix=''):
 	if verbose:
 		unique_str = str(int(time.time() * 1000) % 1_620_000_000_000)
-		filename = '/mnt/c/Users/ethan/Pictures/zebrafish/' + unique_str + '.png'
+		filename = LOG_DIR + v_file_prefix + '_' + unique_str + '.png'
 		imageio.imwrite(filename, resize(img, 0.5))
 
 def _aspect_is_between(contour, upper, lower):
@@ -107,12 +112,12 @@ def _get_bit_depth(img):
 def _get_kernel(size):
 	return cv.getStructuringElement(cv.MORPH_ELLIPSE, (size*2 + 1, size*2 + 1), (size, size))
 
-def _get_mask(img, steps, verbose=False):
+def _get_mask(img, steps, verbose=False, v_file_prefix=''):
 	img_i = img
 	for step in steps:
 		img_i = step(img_i)
-		show(img_i, verbose)
-	show(apply_mask(img, img_i), verbose)
+		show(img_i, verbose, v_file_prefix=v_file_prefix)
+	show(apply_mask(img, img_i), verbose, v_file_prefix=v_file_prefix)
 	return img_i
 
 def _test():
