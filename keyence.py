@@ -1,14 +1,20 @@
 import csv
 import json
+import os.path
 import sys
 import xml.etree.ElementTree as element_tree
 
 COLUMNS = ['B', 'C', 'D', 'E', 'F', 'G']
 ROWS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
+lens_table = 'keyence_BZX800_lenses.csv'
 lenses = {}
 
-with open('keyence_BZX800_lenses.csv', encoding='utf8', newline='') as f:
+def _gethere():
+	script = sys.argv[0] if __name__ == '__main__' else __file__
+	return os.path.dirname(os.path.realpath(script))
+
+with open(os.path.join(_gethere(), lens_table), encoding='utf8', newline='') as f:
 	reader = csv.reader(f, delimiter='\t')
 	next(reader, None) # Skip the header
 
