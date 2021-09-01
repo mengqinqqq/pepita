@@ -17,7 +17,7 @@ import imageops
 import keyence
 
 class Image:
-	def __init__(self, filename, group=None):
+	def __init__(self, filename, group):
 		self.fl_filename = filename
 		self.bf_filename = filename.replace('CH1', 'CH4')
 
@@ -28,7 +28,7 @@ class Image:
 		self.plate = match.group(1)
 		self.xy = int(match.group(2))
 
-		self.group = group if group else keyence.xy_to_well(self.xy)[0]
+		self.group = group
 
 		self.bf_img = None
 		self.fl_img = None
@@ -90,6 +90,9 @@ def chart(results, chartfile):
 	plt.savefig(chartfile)
 
 def get_schematic(platefile, target_count, plate_ignore):
+	if not platefile:
+		return keyence.LAYOUT_DEFAULT
+
 	if '' not in plate_ignore:
 		plate_ignore.append('')
 
@@ -111,13 +114,9 @@ def main(imagefiles, chartfile=None, platefile=None, plate_control=['B'], plate_
 		silent=False):
 	results = {}
 
-	if not platefile:
-		groups = keyence.COLUMNS
-		images = quantify(imagefiles, plate_control)
-	else:
-		schematic = get_schematic(platefile, len(imagefiles), plate_ignore)
-		groups = list(dict.fromkeys(schematic))
-		images = quantify(imagefiles, plate_control, schematic=schematic)
+	schematic = get_schematic(platefile, len(imagefiles), plate_ignore)
+	groups = list(dict.fromkeys(schematic))
+	images = quantify(imagefiles, plate_control, schematic=schematic)
 
 	for group in groups:
 		relevant_values = [img.normalized_value for img in images if img.group == group]
@@ -131,10 +130,7 @@ def main(imagefiles, chartfile=None, platefile=None, plate_control=['B'], plate_
 	return results
 
 def quantify(imagefiles, plate_control=['B'], schematic=None):
-	if schematic:
-		images = [Image(filename, group) for filename, group in zip(imagefiles, schematic)]
-	else:
-		images = [Image(filename) for filename in imagefiles]
+	images = [Image(filename, group) for filename, group in zip(imagefiles, schematic)]
 
 	_ = Pool(8).map(Image.get_raw_value, images)
 	control_values = _calculate_control_values(images, plate_control)

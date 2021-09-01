@@ -7,6 +7,8 @@ import xml.etree.ElementTree as element_tree
 COLUMNS = ['B', 'C', 'D', 'E', 'F', 'G']
 ROWS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
+LAYOUT_DEFAULT = [letter for letter in COLUMNS for _ in range(10)]
+
 lens_table = 'keyence_BZX800_lenses.csv'
 lenses = {}
 
