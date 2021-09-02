@@ -215,7 +215,7 @@ if __name__ == '__main__':
 			'will be excluded.'))
 	parser.add_argument('-nc', '--no-cap',
 		action='store_const',
-		const='-1',
+		const=-1,
 		dest='cap',
 		help=('If present, well values will not be excluded just by virtue of being too large.'))
 
