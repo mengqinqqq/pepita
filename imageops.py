@@ -87,6 +87,17 @@ def get_size_mask(img, erosions=0, threshold=2**7, lower=0, upper=2**32, verbose
 def invert(img):
 	return np.subtract(_get_bit_depth(img)[1], img)
 
+def read(filename, target_bit_depth, channel=0):
+	img = imageio.imread(filename)
+	if channel > 0:
+		img = img[:,:,channel]
+
+	bit_depth = _get_bit_depth(img)
+	if bit_depth[0] != target_bit_depth:
+		img = (img * (np.iinfo(target_bit_depth).max / bit_depth[1])).astype(target_bit_depth)
+
+	return img
+
 def rescale_brightness(img):
 	img_type = _get_bit_depth(img)
 	return ((img - img.min()) * (img_type[1] / img.max())).astype(img_type[0])

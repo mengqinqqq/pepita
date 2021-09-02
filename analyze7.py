@@ -3,7 +3,6 @@
 
 import argparse
 import csv
-import imageio
 import matplotlib.pyplot as plt
 from multiprocessing import Pool
 import numpy as np
@@ -41,14 +40,14 @@ class Image:
 		if self.bf_img is None:
 			with warnings.catch_warnings():
 				warnings.simplefilter("ignore", UserWarning)
-				self.bf_img = imageio.imread(self.bf_filename)
+				self.bf_img = imageops.read(self.bf_filename, np.uint16)
 		return self.bf_img
 
 	def get_fl_img(self):
 		if self.fl_img is None:
 			with warnings.catch_warnings():
 				warnings.simplefilter("ignore", UserWarning)
-				self.fl_img = imageio.imread(self.fl_filename)[:,:,1]
+				self.fl_img = imageops.read(self.fl_filename, np.uint16, 1)
 		return self.fl_img
 
 	def get_mask(self):
