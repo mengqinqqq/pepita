@@ -116,29 +116,34 @@ def get_schematic(platefile, target_count, plate_ignore):
 
 	return [well for row in schematic for well in row]
 
-def main(imagefiles, cap=True, chartfile=None, debug=0, platefile=None, plate_control=['B'],
-		plate_ignore=[], silent=False):
+def main(imagefiles, cap=True, chartfile=None, debug=0, group_regex='.*', platefile=None,
+		plate_control=['B'], plate_ignore=[], silent=False):
 	results = {}
 
 	schematic = get_schematic(platefile, len(imagefiles), plate_ignore)
 	groups = list(dict.fromkeys(schematic))
-	images = quantify(imagefiles, plate_control, cap=cap, debug=debug, schematic=schematic)
+	images = quantify(imagefiles, plate_control, cap=cap, debug=debug, group_regex=group_regex,
+		schematic=schematic)
 
+	pattern = re.compile(group_regex)
 	for group in groups:
-		relevant_values = [img.normalized_value for img in images if img.group == group]
-		results[group] = relevant_values
-		if not silent:
-			with warnings.catch_warnings():
-				warnings.simplefilter("ignore", RuntimeWarning)
-				print(group, np.nanmean(relevant_values), relevant_values)
+		if group in plate_control or pattern.search(group):
+			relevant_values = [img.normalized_value for img in images if img.group == group]
+			results[group] = relevant_values
+			if not silent:
+				with warnings.catch_warnings():
+					warnings.simplefilter("ignore", RuntimeWarning)
+					print(group, np.nanmean(relevant_values), relevant_values)
 
 	if chartfile:
 		chart(results, chartfile)
 
 	return results
 
-def quantify(imagefiles, plate_control=['B'], cap=True, debug=0, schematic=None):
-	images = [Image(filename, group, debug) for filename, group in zip(imagefiles, schematic)]
+def quantify(imagefiles, plate_control=['B'], cap=150, debug=0, group_regex='.*', schematic=None):
+	pattern = re.compile(group_regex)
+	images = [Image(filename, group, debug) for filename, group in zip(imagefiles, schematic)
+		if group in plate_control or pattern.search(group)]
 
 	_ = Pool(8).map(Image.get_raw_value, images)
 	control_values = _calculate_control_values(images, plate_control)
@@ -196,6 +201,12 @@ if __name__ == '__main__':
 		help='Labels to ignore (treat as null/empty) in the plate schematic. Empty cells will '
 			'automatically be ignored, but any other null values (e.g. "[empty]") must be '
 			'specified here. Any number of values may be passed.')
+
+	parser.add_argument('-g', '--group-regex',
+		default='.*',
+		help=('Pattern to be used to match group names that should be included in the results. '
+			'Matched groups will be included, groups that don\'t match will be ignored. Control '
+			'wells will always be included regardless of whether they match.'))
 
 	parser.add_argument('-nc', '--no-cap',
 		action='store_false',
