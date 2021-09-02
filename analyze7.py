@@ -64,10 +64,14 @@ class Image:
 			self.value = total if total > 0 else np.nan
 		return self.value
 
-	def normalize(self, control_values):
+	def normalize(self, control_values, cap=True):
 		try:
 			val = float(self.get_raw_value() * 100 // control_values[self.plate])
-			self.normalized_value = val if val < 150 else np.nan # discard results >=150% of ctrl
+			if cap:
+				# discard results >=150% of ctrl
+				self.normalized_value = val if val < 150 else np.nan
+			else:
+				self.normalized_value = val
 		except ZeroDivisionError:
 			print('ERROR: Plate', self.plate, 'group', self.group, 'with value',
 				self.get_raw_value(), 'has control value', control_values[self.plate])
@@ -112,13 +116,13 @@ def get_schematic(platefile, target_count, plate_ignore):
 
 	return [well for row in schematic for well in row]
 
-def main(imagefiles, chartfile=None, debug=0, platefile=None, plate_control=['B'], plate_ignore=[],
-		silent=False):
+def main(imagefiles, cap=True, chartfile=None, debug=0, platefile=None, plate_control=['B'],
+		plate_ignore=[], silent=False):
 	results = {}
 
 	schematic = get_schematic(platefile, len(imagefiles), plate_ignore)
 	groups = list(dict.fromkeys(schematic))
-	images = quantify(imagefiles, plate_control, debug=debug, schematic=schematic)
+	images = quantify(imagefiles, plate_control, cap=cap, debug=debug, schematic=schematic)
 
 	for group in groups:
 		relevant_values = [img.normalized_value for img in images if img.group == group]
@@ -133,12 +137,12 @@ def main(imagefiles, chartfile=None, debug=0, platefile=None, plate_control=['B'
 
 	return results
 
-def quantify(imagefiles, plate_control=['B'], debug=0, schematic=None):
+def quantify(imagefiles, plate_control=['B'], cap=True, debug=0, schematic=None):
 	images = [Image(filename, group, debug) for filename, group in zip(imagefiles, schematic)]
 
 	_ = Pool(8).map(Image.get_raw_value, images)
 	control_values = _calculate_control_values(images, plate_control)
-	return [image.normalize(control_values) for image in images]
+	return [image.normalize(control_values, cap) for image in images]
 
 def _calculate_control_values(images, plate_control):
 	ctrl_imgs = [img for img in images if img.group in plate_control]
@@ -192,6 +196,12 @@ if __name__ == '__main__':
 		help='Labels to ignore (treat as null/empty) in the plate schematic. Empty cells will '
 			'automatically be ignored, but any other null values (e.g. "[empty]") must be '
 			'specified here. Any number of values may be passed.')
+
+	parser.add_argument('-nc', '--no-cap',
+		action='store_false',
+		dest='cap',
+		help=('If present, well values will not be excluded just by virtue of being >150%% of the '
+			'control.'))
 
 	parser.add_argument('-d', '--debug',
 		action='count',
