@@ -64,12 +64,11 @@ class Image:
 			self.value = total if total > 0 else np.nan
 		return self.value
 
-	def normalize(self, control_values, cap=True):
+	def normalize(self, control_values, cap):
 		try:
 			val = float(self.get_raw_value() * 100 // control_values[self.plate])
-			if cap:
-				# discard results >=150% of ctrl
-				self.normalized_value = val if val < 150 else np.nan
+			if cap > 0:
+				self.normalized_value = val if val < cap else np.nan
 			else:
 				self.normalized_value = val
 		except ZeroDivisionError:
@@ -116,7 +115,7 @@ def get_schematic(platefile, target_count, plate_ignore):
 
 	return [well for row in schematic for well in row]
 
-def main(imagefiles, cap=True, chartfile=None, debug=0, group_regex='.*', platefile=None,
+def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefile=None,
 		plate_control=['B'], plate_ignore=[], silent=False):
 	results = {}
 
@@ -181,7 +180,7 @@ if __name__ == '__main__':
 	parser.add_argument('imagefiles',
 		nargs='+',
 		help='The absolute or relative filenames where the relevant images can be found.')
-	parser.add_argument('-c', '--chartfile',
+	parser.add_argument('-ch', '--chartfile',
 		help='If supplied, the resulting numbers will be charted at the given filename.')
 
 	parser.add_argument('-p', '--platefile',
@@ -208,11 +207,17 @@ if __name__ == '__main__':
 			'Matched groups will be included, groups that don\'t match will be ignored. Control '
 			'wells will always be included regardless of whether they match.'))
 
+	parser.add_argument('-c', '--cap',
+		default=150,
+		type=int,
+		help=('Exclude well values larger than the given integer, expressed as a percentage of '
+			'the mean control value. Defaults to 150 (i.e. values larger than 150%% of control '
+			'will be excluded.'))
 	parser.add_argument('-nc', '--no-cap',
-		action='store_false',
+		action='store_const',
+		const='-1',
 		dest='cap',
-		help=('If present, well values will not be excluded just by virtue of being >150%% of the '
-			'control.'))
+		help=('If present, well values will not be excluded just by virtue of being too large.'))
 
 	parser.add_argument('-d', '--debug',
 		action='count',
