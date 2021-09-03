@@ -166,6 +166,10 @@ def _calculate_control_values(images, plate_control):
 				break
 			ctrl_results = ctrl_results[valid_indices]
 
+	if not ctrl_vals:
+		raise ValueError(
+			'No control wells found. Please supply a --plate-control, or modify the given value.')
+
 	return ctrl_vals
 
 #
