@@ -236,4 +236,8 @@ if __name__ == '__main__':
 
 	args = parser.parse_args(sys.argv[1:])
 	args_dict = vars(args)
-	main(**args_dict)
+	try:
+		main(**args_dict)
+	except ValueError as ve:
+		print('Error:', ve)
+		sys.exit(1)
