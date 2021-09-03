@@ -22,7 +22,7 @@ class Image:
 
 		match = re.search(r'([a-zA-Z0-9]+)_XY([0-9][0-9])_', filename)
 		if not match:
-			raise ValueError('Filename %s missing needed xy information' % filename)
+			raise UserError('Filename %s missing needed xy information' % filename)
 
 		self.plate = match.group(1)
 		self.xy = int(match.group(2))
@@ -77,6 +77,9 @@ class Image:
 			self.normalized_value = np.nan
 		return self
 
+class UserError(ValueError):
+	pass
+
 def chart(results, chartfile):
 	sns.set_theme(style='whitegrid')
 
@@ -111,7 +114,7 @@ def get_schematic(platefile, target_count, plate_ignore):
 			del row[0]
 		count = sum([len(row) for row in schematic])
 		if count != target_count:
-			raise ValueError('Schematic does not have same number of cells as images provided')
+			raise UserError('Schematic does not have same number of cells as images provided')
 
 	return [well for row in schematic for well in row]
 
@@ -167,7 +170,7 @@ def _calculate_control_values(images, plate_control):
 			ctrl_results = ctrl_results[valid_indices]
 
 	if not ctrl_vals:
-		raise ValueError(
+		raise UserError(
 			'No control wells found. Please supply a --plate-control, or modify the given value.')
 
 	return ctrl_vals
@@ -238,6 +241,6 @@ if __name__ == '__main__':
 	args_dict = vars(args)
 	try:
 		main(**args_dict)
-	except ValueError as ve:
-		print('Error:', ve)
+	except UserError as ue:
+		print('Error:', ue)
 		sys.exit(1)
