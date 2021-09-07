@@ -1,3 +1,4 @@
+import argparse
 import cv2 as cv
 import imageio
 import numpy as np
@@ -137,12 +138,34 @@ def _test():
 	assert _get_bit_depth(np.array([1, 2, 3, 4, 256])) == (np.uint16, 65_535)
 	assert _get_bit_depth(np.array([1, 2, 3, 4, 65_536])) == (np.int32, 2_147_483_647)
 
+#
+# main
+#
+
+def main(imagefiles, logfile_prefix='imageops', debug=1):
+	for filename in imagefiles:
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", UserWarning)
+			image = imageio.imread(filename)
+		get_fish_mask(image, silent=debug<1, verbose=debug>1, v_file_prefix=logfile_prefix)
+
 if __name__ == '__main__':
-	if len(sys.argv) > 1:
-		for filename in sys.argv[1:]:
-			with warnings.catch_warnings():
-				warnings.simplefilter("ignore", UserWarning)
-				image = imageio.imread(filename)
-			get_fish_mask(image, True)
-	else:
-		raise TypeError('Invoke with an argument, i.e. the name of a file or files to process.')
+	_test()
+
+	parser = argparse.ArgumentParser(
+		description=('Utility for operating on images of whole zebrafish with stained neuromasts, '
+			'for the purposes of measuring hair cell damage.'))
+
+	parser.add_argument('imagefiles',
+		nargs='+',
+		help='The absolute or relative filenames where the relevant images can be found.')
+	parser.add_argument('-d', '--debug',
+		action='count',
+		default=1,
+		help=('Indicates intermediate processing images should be output for troubleshooting '
+			'purposes. Including this argument once will yield one intermediate image per input '
+			'file, twice will yield several intermediate images per input file.'))
+
+	args = parser.parse_args(sys.argv[1:])
+	args_dict = vars(args)
+	main(**args_dict)
