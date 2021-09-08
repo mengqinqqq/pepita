@@ -1,5 +1,6 @@
 import argparse
 import cv2 as cv
+from skimage import feature
 import imageio
 import numpy as np
 import os
@@ -18,6 +19,14 @@ def binarize(img, threshold):
 		return np.where(img < threshold, 255, 0).astype(np.uint8)
 	else:
 		return img
+
+def circle_local_maxima(img, count=50, min_pct=0.05, radius=8):
+	coordinates = feature.peak_local_max(img, min_distance=radius, num_peaks=count,
+		threshold_rel=min_pct)
+	maxima = np.zeros_like(img)
+	for coordinate in coordinates:
+		maxima[coordinate[0]][coordinate[1]] = 255
+	return dilate(maxima, size=radius)
 
 def close(img, size=1, iterations=1):
 	if size > 0 and iterations > 0:
@@ -68,6 +77,19 @@ def get_fish_mask(img, silent=True, verbose=False, v_file_prefix=''):
 		invert,
 		lambda img_i: get_aspect_mask(img_i, target_ratio=5, error_bound=0.5, verbose=verbose),
 		invert,
+	)
+	mask = _get_mask(img, steps, verbose, v_file_prefix=v_file_prefix)
+	if not verbose and not silent:
+		show(img, v_file_prefix=v_file_prefix)
+		show(apply_mask(img, mask), v_file_prefix=v_file_prefix)
+	return mask
+
+def get_particle_mask(img, fish_mask, silent=True, verbose=False, v_file_prefix=''):
+	show(img, verbose, v_file_prefix=v_file_prefix)
+	steps = (
+		lambda img_i: apply_mask(img_i, fish_mask),
+		rescale_brightness,
+		circle_local_maxima,
 	)
 	mask = _get_mask(img, steps, verbose, v_file_prefix=v_file_prefix)
 	if not verbose and not silent:
@@ -146,8 +168,16 @@ def main(imagefiles, logfile_prefix='imageops', debug=1):
 	for filename in imagefiles:
 		with warnings.catch_warnings():
 			warnings.simplefilter("ignore", UserWarning)
-			image = imageio.imread(filename)
-		get_fish_mask(image, silent=debug<1, verbose=debug>1, v_file_prefix=logfile_prefix)
+			image = read(filename, np.uint16)
+		fish_mask = get_fish_mask(image, silent=debug<1, verbose=debug>1,
+			v_file_prefix=logfile_prefix)
+
+		fl_filename = filename.replace('CH4', 'CH1')
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", UserWarning)
+			fl_image = read(fl_filename, np.uint16, 1)
+		get_particle_mask(fl_image, fish_mask, silent=debug<1, verbose=debug>1,
+			v_file_prefix=logfile_prefix)
 
 if __name__ == '__main__':
 	_test()
