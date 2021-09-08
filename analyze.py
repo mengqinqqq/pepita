@@ -53,7 +53,7 @@ class Image:
 	def get_mask(self):
 		if self.mask is None:
 			self.mask = imageops.get_fish_mask(
-				self.get_bf_img(), self.get_fl_img(), self.debug < 1, self.debug >= 2,
+				self.get_bf_img(), self.get_fl_img(), True, self.debug < 1, self.debug >= 2,
 				'{}_XY{:02d}'.format(self.plate, self.xy))
 		return self.mask
 

@@ -63,6 +63,8 @@ def get_contours_by_area(img, threshold=-1, lower=0, upper=2**32):
 
 def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_file_prefix=''):
 	show(bf_img, verbose, v_file_prefix=v_file_prefix)
+	if particles:
+		show(fl_img, verbose, v_file_prefix=v_file_prefix)
 	steps = (
 		rescale_brightness,
 		lambda img_i: binarize(img_i, threshold=2**14),
@@ -85,7 +87,9 @@ def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_
 	mask = _get_mask(bf_img, steps, verbose, v_file_prefix=v_file_prefix)
 	if not verbose and not silent:
 		show(bf_img, v_file_prefix=v_file_prefix)
-		show(apply_mask(bf_img, mask), v_file_prefix=v_file_prefix)
+		if particles:
+			show(fl_img, v_file_prefix=v_file_prefix)
+		show(apply_mask(bf_img if not particles else fl_img, mask), v_file_prefix=v_file_prefix)
 	return mask
 
 def get_size_mask(img, erosions=0, threshold=2**7, lower=0, upper=2**32, verbose=False,
