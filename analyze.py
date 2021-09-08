@@ -146,8 +146,6 @@ def quantify(imagefiles, plate_control=['B'], cap=150, debug=0, group_regex='.*'
 	pattern = re.compile(group_regex)
 	images = [Image(filename, group, debug) for filename, group in zip(imagefiles, schematic)
 		if group in plate_control or pattern.search(group)]
-
-	_ = Pool(8).map(Image.get_raw_value, images)
 	control_values = _calculate_control_values(images, plate_control)
 	return [image.normalize(control_values, cap) for image in images]
 
