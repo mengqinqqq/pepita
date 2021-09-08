@@ -91,10 +91,8 @@ def chart(results, chartfile):
 	})
 
 	sns.swarmplot(x='group', y='brightness', data=data)
-	sns.boxplot(x='group', y='brightness', data=data, meanline=True,
-		meanprops={'color': '#0f0f0f80', 'ls': '-', 'lw': 1}, medianprops={'visible': False},
-		showbox=False, showcaps=False, showfliers=False, showmeans=True,
-		whiskerprops={'visible': False})
+	sns.boxplot(x='group', y='brightness', data=data, showbox=False, showcaps=False,
+		showfliers=False, whiskerprops={'visible': False})
 	plt.xticks(rotation=45)
 	plt.tight_layout()
 	plt.savefig(chartfile)
@@ -137,7 +135,7 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 			if not silent:
 				with warnings.catch_warnings():
 					warnings.simplefilter("ignore", RuntimeWarning)
-					print(group, np.nanmean(relevant_values), relevant_values)
+					print(group, np.nanmedian(relevant_values), relevant_values)
 
 	if chartfile:
 		chart(results, chartfile)
@@ -159,17 +157,7 @@ def _calculate_control_values(images, plate_control):
 
 	for plate in np.unique([img.plate for img in ctrl_imgs]):
 		ctrl_results = np.array([img.get_raw_value() for img in ctrl_imgs if img.plate == plate])
-		while True:
-			with warnings.catch_warnings():
-				warnings.simplefilter("ignore", RuntimeWarning)
-				ctrl_vals[plate] = float(np.nanmean(ctrl_results))
-			upper = ctrl_vals[plate] * 1.5
-			lower = ctrl_vals[plate] * 0.5
-
-			valid_indices = (ctrl_results <= upper) & (ctrl_results >= lower)
-			if np.all(valid_indices):
-				break
-			ctrl_results = ctrl_results[valid_indices]
+		ctrl_vals[plate] = float(np.nanmedian(ctrl_results))
 
 	if not ctrl_vals:
 		raise UserError(
@@ -220,7 +208,7 @@ if __name__ == '__main__':
 		default=150,
 		type=int,
 		help=('Exclude well values larger than the given integer, expressed as a percentage of '
-			'the mean control value. Defaults to 150 (i.e. values larger than 150%% of control '
+			'the median control value. Defaults to 150 (i.e. values larger than 150%% of control '
 			'will be excluded.'))
 	parser.add_argument('-nc', '--no-cap',
 		action='store_const',
