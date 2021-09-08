@@ -61,13 +61,13 @@ def get_contours_by_area(img, threshold=-1, lower=0, upper=2**32):
 		warnings.simplefilter("ignore", np.VisibleDeprecationWarning)
 		return np.multiply(contours, np.minimum(areas > lower, areas < upper))# ugly: consider fix
 
-def get_fish_mask(img, silent=True, verbose=False, v_file_prefix=''):
-	show(img, verbose, v_file_prefix=v_file_prefix)
+def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_file_prefix=''):
+	show(bf_img, verbose, v_file_prefix=v_file_prefix)
 	steps = (
 		rescale_brightness,
 		lambda img_i: binarize(img_i, threshold=2**14),
 		lambda img_i: apply_mask(
-			img_i, get_size_mask(img, erosions=10, threshold=2**12, lower=2**15, verbose=verbose,
+			img_i, get_size_mask(bf_img, erosions=10, threshold=2**12, lower=2**15, verbose=verbose,
 				v_file_prefix=v_file_prefix)),
 		lambda img_i: close(img_i, size=6, iterations=16),
 		lambda img_i: dilate(img_i, size=5, iterations=6),
@@ -78,23 +78,16 @@ def get_fish_mask(img, silent=True, verbose=False, v_file_prefix=''):
 		lambda img_i: get_aspect_mask(img_i, target_ratio=5, error_bound=0.5, verbose=verbose),
 		invert,
 	)
-	mask = _get_mask(img, steps, verbose, v_file_prefix=v_file_prefix)
+	if particles:
+		steps = (
+			*steps,
+			lambda img_i: apply_mask(fl_img, img_i),
+			circle_local_maxima,
+		)
+	mask = _get_mask(bf_img, steps, verbose, v_file_prefix=v_file_prefix)
 	if not verbose and not silent:
-		show(img, v_file_prefix=v_file_prefix)
-		show(apply_mask(img, mask), v_file_prefix=v_file_prefix)
-	return mask
-
-def get_particle_mask(img, fish_mask, silent=True, verbose=False, v_file_prefix=''):
-	show(img, verbose, v_file_prefix=v_file_prefix)
-	steps = (
-		lambda img_i: apply_mask(img_i, fish_mask),
-		rescale_brightness,
-		circle_local_maxima,
-	)
-	mask = _get_mask(img, steps, verbose, v_file_prefix=v_file_prefix)
-	if not verbose and not silent:
-		show(img, v_file_prefix=v_file_prefix)
-		show(apply_mask(img, mask), v_file_prefix=v_file_prefix)
+		show(bf_img, v_file_prefix=v_file_prefix)
+		show(apply_mask(bf_img, mask), v_file_prefix=v_file_prefix)
 	return mask
 
 def get_size_mask(img, erosions=0, threshold=2**7, lower=0, upper=2**32, verbose=False,
@@ -164,19 +157,14 @@ def _test():
 # main
 #
 
-def main(imagefiles, logfile_prefix='imageops', debug=1):
-	for filename in imagefiles:
+def main(imagefiles, debug=1, logfile_prefix='imageops', particles=True):
+	for bf_filename in imagefiles:
+		fl_filename = bf_filename.replace('CH4', 'CH1')
 		with warnings.catch_warnings():
 			warnings.simplefilter("ignore", UserWarning)
-			image = read(filename, np.uint16)
-		fish_mask = get_fish_mask(image, silent=debug<1, verbose=debug>1,
-			v_file_prefix=logfile_prefix)
-
-		fl_filename = filename.replace('CH4', 'CH1')
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", UserWarning)
-			fl_image = read(fl_filename, np.uint16, 1)
-		get_particle_mask(fl_image, fish_mask, silent=debug<1, verbose=debug>1,
+			bf_img = read(bf_filename, np.uint16)
+			fl_img = None if not particles else read(fl_filename, np.uint16, 1)
+		get_fish_mask(bf_img, fl_img, particles=particles, silent=debug<1, verbose=debug>1,
 			v_file_prefix=logfile_prefix)
 
 if __name__ == '__main__':
@@ -189,6 +177,10 @@ if __name__ == '__main__':
 	parser.add_argument('imagefiles',
 		nargs='+',
 		help='The absolute or relative filenames where the relevant images can be found.')
+	parser.add_argument('-p', '--particles',
+		action='store_true',
+		help=('If present, the resulting mask will obscure everything except the bright particles '
+			'on the fish in the given images. Otherwise the whole fish will be shown.'))
 	parser.add_argument('-d', '--debug',
 		action='count',
 		default=1,
