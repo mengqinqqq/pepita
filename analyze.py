@@ -57,10 +57,12 @@ class Image:
 				'{}_XY{:02d}'.format(self.plate, self.xy))
 		return self.mask
 
-	def get_raw_value(self):
+	def get_raw_value(self, threshold=0.05):
 		if self.value is None:
 			fl_img_masked = imageops.apply_mask(self.get_fl_img(), self.get_mask())
-			total = fl_img_masked.sum(dtype=np.uint64, where=(fl_img_masked>5_000))
+			fl_max_pixel = fl_img_masked.max()
+			total = fl_img_masked.sum(
+				dtype=np.uint64, where=(fl_img_masked > fl_max_pixel*threshold))
 			self.value = total if total > 0 else np.nan
 		return self.value
 
