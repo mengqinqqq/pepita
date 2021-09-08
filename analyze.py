@@ -108,7 +108,7 @@ def get_schematic(platefile, target_count, plate_ignore):
 		schematic = [[well for well in row if well not in plate_ignore] for row in csv.reader(f)]
 
 	count = sum([len(row) for row in schematic])
-	if count != target_count:
+	if count != target_count:# try removing first row and first column, see if then it matches up
 		del schematic[0]
 		for row in schematic:
 			del row[0]
@@ -123,7 +123,7 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 	results = {}
 
 	schematic = get_schematic(platefile, len(imagefiles), plate_ignore)
-	groups = list(dict.fromkeys(schematic))
+	groups = list(dict.fromkeys(schematic))# deduplicated copy of `schematic`
 	images = quantify(imagefiles, plate_control, cap=cap, debug=debug, group_regex=group_regex,
 		schematic=schematic)
 

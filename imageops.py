@@ -65,6 +65,7 @@ def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_
 	show(bf_img, verbose, v_file_prefix=v_file_prefix)
 	if particles:
 		show(fl_img, verbose, v_file_prefix=v_file_prefix)
+
 	steps = (
 		rescale_brightness,
 		lambda img_i: binarize(img_i, threshold=2**14),
@@ -82,8 +83,9 @@ def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_
 		steps = (
 			*steps,
 			lambda img_i: apply_mask(fl_img, img_i),
-			circle_local_maxima,
+			lambda img_i: circle_local_maxima(img_i, count=50, min_pct=0.05, radius=8),
 		)
+
 	mask = _get_mask(bf_img, steps, verbose, v_file_prefix=v_file_prefix)
 	if not verbose and not silent:
 		show(bf_img, v_file_prefix=v_file_prefix)
