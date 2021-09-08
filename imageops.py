@@ -75,8 +75,6 @@ def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_
 			img_i, erosions=4, threshold=-1, lower=2**15, upper=2**19, verbose=verbose,
 			v_file_prefix=v_file_prefix),
 		invert,
-		lambda img_i: get_aspect_mask(img_i, target_ratio=5, error_bound=0.5, verbose=verbose),
-		invert,
 	)
 	if particles:
 		steps = (
