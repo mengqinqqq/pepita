@@ -61,30 +61,46 @@ def get_contours_by_area(img, threshold=-1, lower=0, upper=2**32):
 		warnings.simplefilter("ignore", np.VisibleDeprecationWarning)
 		return np.multiply(contours, np.minimum(areas > lower, areas < upper))# ugly: consider fix
 
-def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_file_prefix=''):
+def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_file_prefix='',
+		mask_filename=None):
 	show(bf_img, verbose, v_file_prefix=v_file_prefix)
 	if particles:
 		show(fl_img, verbose, v_file_prefix=v_file_prefix)
 
-	steps = (
-		rescale_brightness,
-		lambda img_i: binarize(img_i, threshold=2**14),
-		lambda img_i: apply_mask(
-			img_i, get_size_mask(bf_img, erosions=10, threshold=2**12, lower=2**15, verbose=verbose,
-				v_file_prefix=v_file_prefix)),
-		lambda img_i: close(img_i, size=6, iterations=16),
-		lambda img_i: dilate(img_i, size=5, iterations=6),
-		lambda img_i: get_size_mask(
-			img_i, erosions=4, threshold=-1, lower=2**15, upper=2**19, verbose=verbose,
-			v_file_prefix=v_file_prefix),
-		invert,
-	)
-	if particles:
+	if mask_filename and os.path.isfile(mask_filename):
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", UserWarning)
+			mask_img = read(mask_filename, np.uint8)
+			show(mask_img, verbose, v_file_prefix=v_file_prefix)
+
+		if particles:
+			steps = (
+				lambda img_i: apply_mask(fl_img, mask_img),
+				lambda img_i: circle_local_maxima(img_i, count=50, min_pct=0.05, radius=8),
+			)
+		else:
+			show(apply_mask(bf_img, mask_img), verbose, v_file_prefix=v_file_prefix)
+			return mask_img
+	else:
 		steps = (
-			*steps,
-			lambda img_i: apply_mask(fl_img, img_i),
-			lambda img_i: circle_local_maxima(img_i, count=50, min_pct=0.05, radius=8),
+			rescale_brightness,
+			lambda img_i: binarize(img_i, threshold=2**14),
+			lambda img_i: apply_mask(
+				img_i, get_size_mask(bf_img, erosions=10, threshold=2**12, lower=2**15, verbose=verbose,
+					v_file_prefix=v_file_prefix)),
+			lambda img_i: close(img_i, size=6, iterations=16),
+			lambda img_i: dilate(img_i, size=5, iterations=6),
+			lambda img_i: get_size_mask(
+				img_i, erosions=4, threshold=-1, lower=2**15, upper=2**19, verbose=verbose,
+				v_file_prefix=v_file_prefix),
+			invert,
 		)
+		if particles:
+			steps = (
+				*steps,
+				lambda img_i: apply_mask(fl_img, img_i),
+				lambda img_i: circle_local_maxima(img_i, count=50, min_pct=0.05, radius=8),
+			)
 
 	mask = _get_mask(bf_img, steps, verbose, v_file_prefix=v_file_prefix)
 	if not verbose and not silent:

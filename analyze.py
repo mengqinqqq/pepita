@@ -55,7 +55,7 @@ class Image:
 		if self.mask is None:
 			self.mask = imageops.get_fish_mask(
 				self.get_bf_img(), self.get_fl_img(), True, self.debug < 1, self.debug >= 2,
-				'{}_XY{:02d}'.format(self.plate, self.xy))
+				'{}_XY{:02d}'.format(self.plate, self.xy), self.fl_filename.replace('CH1', 'mask'))
 		return self.mask
 
 	def get_raw_value(self, threshold=0.05):
