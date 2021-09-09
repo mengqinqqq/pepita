@@ -1,5 +1,6 @@
 # requires: pip install imagecodecs
 # requires: pip install opencv-python
+# requires scikit-image version >= 0.18
 
 import argparse
 import csv
