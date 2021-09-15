@@ -91,7 +91,8 @@ def chart(results, chartfile):
 		'group': [key for key, values in results.items() for _ in values],
 	})
 
-	sns.swarmplot(x='group', y='brightness', data=data)
+	ax = sns.swarmplot(x='group', y='brightness', data=data)
+	ax.set_ylim(bottom=0)
 	sns.boxplot(x='group', y='brightness', data=data, showbox=False, showcaps=False,
 		showfliers=False, whiskerprops={'visible': False})
 	plt.xticks(rotation=45)
