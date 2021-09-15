@@ -31,7 +31,9 @@ class Image:
 		self.debug = debug
 
 		self.bf_img = None
+		self.bf_metadata = None
 		self.fl_img = None
+		self.fl_metadata = None
 		self.mask = None
 		self.normalized_value = None
 		self.value = None
@@ -43,12 +45,22 @@ class Image:
 				self.bf_img = imageops.read(self.bf_filename, np.uint16)
 		return self.bf_img
 
+	def get_bf_metadata(self):
+		if self.bf_metadata is None:
+			self.bf_metadata = keyence.extract_metadata(self.bf_filename)
+		return self.bf_metadata
+
 	def get_fl_img(self):
 		if self.fl_img is None:
 			with warnings.catch_warnings():
 				warnings.simplefilter("ignore", UserWarning)
 				self.fl_img = imageops.read(self.fl_filename, np.uint16, 1)
 		return self.fl_img
+
+	def get_fl_metadata(self):
+		if self.fl_metadata is None:
+			self.fl_metadata = keyence.extract_metadata(self.fl_filename)
+		return self.fl_metadata
 
 	def get_mask(self):
 		if self.mask is None:
@@ -171,7 +183,7 @@ def _calculate_control_values(images, plate_control):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
 		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the '
-			'purposes of measuring hair cell damage.'))
+			'purposes of measuring hair cell damage. Reports values relative to control.'))
 
 	parser.add_argument('imagefiles',
 		nargs='+',
