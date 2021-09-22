@@ -136,3 +136,6 @@ if __name__ == '__main__':
 	print('EC_50:', ec_50, 'μM')
 
 	chart_combo(model, model, model)
+	neo_neo_FIC_50 = get_combo_FIC(0.5, model, model, model, 0.5)
+	neo_neo_FIC_90 = get_combo_FIC(0.9, model, model, model, 0.5)
+	print('Neomycin FIC_50, FIC_90:', neo_neo_FIC_50, neo_neo_FIC_90)
