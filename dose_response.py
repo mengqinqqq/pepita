@@ -7,6 +7,16 @@ import warnings
 
 LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/dose_response'
 
+# Berenbaum 1978, https://doi.org/10.1093/infdis/137.2.122, Eq. 1
+def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportion_a):
+	ec_a = model_a.effective_concentration(pct_inhibition)
+	ec_b = model_b.effective_concentration(pct_inhibition)
+
+	ec_combo = model_combo.effective_concentration(pct_inhibition)
+	ec_combo_a, ec_combo_b = ec_combo * combo_proportion_a, ec_combo * (1 - combo_proportion_a)
+
+	return (ec_combo_a / ec_a) + (ec_combo_b / ec_b)
+
 # Ritz 2009, https://doi.org/10.1002/etc.7, Eq. 2
 # `xs` is a numpy array of x values; b, c, d, and e are model parameters:
 # relative slope at inflection point, lower asymptote, upper asymptote, inflection point (EC_50)
