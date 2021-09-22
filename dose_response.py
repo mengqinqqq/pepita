@@ -22,11 +22,11 @@ class Model:
 			popt, pcov = curve_fit(model, self.xs, self.ys)
 		self.b, self.c, self.e = popt
 
-	# pct_value = (f(x) - min) / (max - min)
+	# pct_survival = (f(x) - min) / (max - min)
 	# f(x) = c + (d - c) / (1 + (x / e)**b)
 	# yields x
-	def find_pct(self, pct_value):
-		if pct_value == 0.5:
+	def find_EC(self, pct_survival):
+		if pct_survival == 0.5:
 			return self.e
 
 		b = self.b
@@ -36,12 +36,12 @@ class Model:
 		max_ = self.E_0
 		min_ = self.get_absolute_E_max()
 
-		return e * ((d - c) / (pct_value * (max_ - min_) + min_ - c) - 1)**(1/b)
+		return e * ((d - c) / (pct_survival * (max_ - min_) + min_ - c) - 1)**(1/b)
 
 	def get_absolute_E_max(self):
 		return self.E_max if self.E_max is not None else self.c
 
-	def get_drug_E_max(self):
+	def get_condition_E_max(self):
 		return self.c
 
 #
@@ -58,11 +58,11 @@ if __name__ == '__main__':
 
 	model = Model(xs, ys)
 
-	ic_90 = model.find_pct(0.1)
-	ic_75 = model.find_pct(0.25)
-	ic_50 = model.find_pct(0.5)
+	ec_90 = model.find_EC(pct_survival=0.1)
+	ec_75 = model.find_EC(pct_survival=0.25)
+	ec_50 = model.find_EC(pct_survival=0.5)
 
 	print('E_max:', model.get_absolute_E_max(), 'score')
-	print('IC_90:', ic_90, 'μM')
-	print('IC_75:', ic_75, 'μM')
-	print('IC_50:', ic_50, 'μM')
+	print('EC_90:', ec_90, 'μM')
+	print('EC_75:', ec_75, 'μM')
+	print('EC_50:', ec_50, 'μM')
