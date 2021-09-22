@@ -52,7 +52,11 @@ class Model:
 	# pct_survival = (f(x) - min) / (max - min)
 	# f(x) = c + (d - c) / (1 + (x / e)**b)
 	# yields x
-	def find_EC(self, pct_survival):
+	def effective_concentration(self, pct_inhibition):
+		if pct_inhibition <= 0 or pct_inhibition >= 1:
+			raise RuntimeError('Inhibition level must be between 0 and 1')
+
+		pct_survival = 1 - pct_inhibition
 		if pct_survival == 0.5:
 			return self.e
 
@@ -88,9 +92,9 @@ if __name__ == '__main__':
 
 	model = Model(xs, ys, 'Neomycin', debug=1)
 
-	ec_90 = model.find_EC(pct_survival=0.1)
-	ec_75 = model.find_EC(pct_survival=0.25)
-	ec_50 = model.find_EC(pct_survival=0.5)
+	ec_90 = model.effective_concentration(0.9)
+	ec_75 = model.effective_concentration(0.75)
+	ec_50 = model.effective_concentration(0.5)
 
 	print('E_max:', model.get_absolute_E_max(), 'score')
 	print('EC_90:', ec_90, 'μM')
