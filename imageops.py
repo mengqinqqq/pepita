@@ -5,10 +5,10 @@ import imageio
 import numpy as np
 import os
 import sys
-import time
+from time import time
 import warnings
 
-LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/'
+LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/imageops'
 
 def apply_mask(img, mask):# mask should have black background, white foreground
 	img_type = _get_bit_depth(img)
@@ -143,8 +143,8 @@ def resize(img, factor):
 
 def show(img, verbose=True, v_file_prefix=''):
 	if verbose:
-		unique_str = str(int(time.time() * 1000) % 1_620_000_000_000)
-		filename = LOG_DIR + v_file_prefix + '_' + unique_str + '.png'
+		unique_str = str(int(time() * 1000) % 1_620_000_000_000)
+		filename = f'{LOG_DIR}/{v_file_prefix}_{unique_str}.png'
 		imageio.imwrite(filename, resize(img, 0.5))
 
 def _aspect_is_between(contour, upper, lower):
