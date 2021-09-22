@@ -1,11 +1,33 @@
 import csv
 from scipy.optimize import curve_fit
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from time import time
 import warnings
 
 LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/dose_response'
+
+def chart_combo(model_a, model_b, model_combo):
+	subconditions_count = len(model_a.xs)
+	data = pd.DataFrame({
+		'concentration': np.concatenate((model_a.xs, model_b.xs, model_combo.xs)),
+		'score': np.concatenate((model_a.ys, model_b.ys, model_combo.ys)),
+		'condition': ['A: ' + model_a.condition] * subconditions_count
+			+ ['B: ' + model_b.condition] * subconditions_count
+			+ ['AB: ' + model_combo.condition] * subconditions_count
+	})
+	data = data.pivot_table(
+		index='condition', columns='concentration', values='score', aggfunc='median')
+
+	sns.heatmap(data,
+		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
+		linewidths=0.5, square=True)
+	unique_str = str(int(time() * 1000) % 1_620_000_000_000)
+	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_{unique_str}.png')
+	plt.close()
+	plt.clf()
 
 # Berenbaum 1978, https://doi.org/10.1093/infdis/137.2.122, Eq. 1
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportion_a):
@@ -58,6 +80,8 @@ class Model:
 		plt.legend()
 		unique_str = str(int(time() * 1000) % 1_620_000_000_000)
 		plt.savefig(f'{LOG_DIR}/{self.condition}_{unique_str}.png')
+		plt.close()
+		plt.clf()
 
 	# pct_survival = (f(x) - min) / (max - min)
 	# f(x) = c + (d - c) / (1 + (x / e)**b)
@@ -110,3 +134,5 @@ if __name__ == '__main__':
 	print('EC_90:', ec_90, 'μM')
 	print('EC_75:', ec_75, 'μM')
 	print('EC_50:', ec_50, 'μM')
+
+	chart_combo(model, model, model)
