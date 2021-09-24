@@ -106,23 +106,57 @@ class Model:
 		return self.equation(xs, self.b, self.c, self.e)
 
 def chart_pair(model_a, model_b, model_combo):
-	subconditions_count = len(model_a.xs)
+	# data chart
+
+	complete_combos = []
+	for combo_x, combo_y in zip(model_combo.xs, model_combo.ys):
+		concentration_a = 2 * combo_x * model_combo.proportion_a
+		concentration_b = 2 * combo_x * (1 - model_combo.proportion_a)
+		if concentration_a in model_a.xs and concentration_b in model_b.xs:
+			a_y = model_a.ys[model_a.xs.index(concentration_a)]
+			b_y = model_b.ys[model_b.xs.index(concentration_b)]
+			complete_combos.append((combo_x, a_y, b_y, combo_y))
+
 	data = pd.DataFrame({
-		'concentration': np.concatenate((model_a.xs, model_b.xs, model_combo.xs)),
-		'score': np.concatenate((model_a.ys, model_b.ys, model_combo.ys)),
-		'condition': ['A: ' + model_a.condition] * subconditions_count
-			+ ['B: ' + model_b.condition] * subconditions_count
-			+ ['AB: ' + model_combo.condition] * subconditions_count
+		'concentration': [combo_x for combo_x, _, _, _ in complete_combos] * 3,
+		'score': [a_y for _, a_y, _, _ in complete_combos]
+			+ [b_y for _, _, b_y, _ in complete_combos]
+			+ [combo_y for _, _, _, combo_y in complete_combos],
+		'condition': [model_a.condition] * len(complete_combos)
+			+ [model_b.condition] * len(complete_combos)
+			+ ['+'.join(model_combo.condition)] * len(complete_combos)
 	})
 	data = data.pivot_table(
 		index='condition', columns='concentration', values='score', aggfunc='median')
 
 	sns.heatmap(data,
 		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
-		linewidths=0.5, square=True)
+		linewidths=1, square=True)
 	unique_str = str(int(time() * 1000) % 1_620_000_000_000)
-	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_{unique_str}.png')
-	plt.close()
+	plt.title(f'{model_a.condition} vs. {model_b.condition}: Raw Data')
+	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_data_{unique_str}.png')
+	plt.clf()
+
+	# model chart
+
+	max_x = int(max(max(model_a.xs), max(model_b.xs)))
+	max_x = max_x + 5 - (max_x % 5) # round up to the nearest 5
+	xs = list(range(0, int(max_x), int(max_x / 5)))
+	data = pd.DataFrame({
+		'concentration': xs * 3,
+		'score': np.concatenate((model_a.get_ys(xs), model_b.get_ys(xs), model_combo.get_ys(xs))),
+		'condition': [model_a.condition] * len(xs)
+			+ [model_b.condition] * len(xs)
+			+ ['+'.join(model_combo.condition)] * len(xs)
+	})
+	data = data.pivot_table(
+		index='condition', columns='concentration', values='score', aggfunc='median')
+
+	sns.heatmap(data,
+		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
+		linewidths=1, square=True)
+	plt.title(f'{model_a.condition} vs. {model_b.condition}: Model')
+	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_model_{unique_str}.png')
 	plt.clf()
 
 # Berenbaum 1978, https://doi.org/10.1093/infdis/137.2.122, Eq. 1
