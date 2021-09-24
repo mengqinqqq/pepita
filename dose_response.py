@@ -142,6 +142,10 @@ def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportio
 def log_logistic_model(xs, b, c, d, e):
 	return c + (d - c) / (1 + (xs / e)**b)
 
+def neo_E_max():
+	neo_model = _get_neo_model()
+	return _neo_model.get_condition_E_max()
+
 def _get_here():
 	script = sys.argv[0] if __name__ == '__main__' else __file__
 	return os.path.dirname(os.path.realpath(script))

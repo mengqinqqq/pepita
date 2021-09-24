@@ -180,11 +180,7 @@ def _calculate_control_values(images, plate_control):
 # main
 #
 
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser(
-		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the '
-			'purposes of measuring hair cell damage. Reports values relative to control.'))
-
+def set_arguments(parser):
 	parser.add_argument('imagefiles',
 		nargs='+',
 		help='The absolute or relative filenames where the relevant images can be found.')
@@ -237,6 +233,13 @@ if __name__ == '__main__':
 		action='store_true',
 		help=('If present, printed output will be suppressed. More convenient for programmatic '
 			'execution.'))
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(
+		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the '
+			'purposes of measuring hair cell damage. Reports values relative to control.'))
+
+	set_arguments(parser)
 
 	args = parser.parse_args(sys.argv[1:])
 	args_dict = vars(args)
