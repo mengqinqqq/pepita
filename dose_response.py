@@ -11,11 +11,35 @@ import warnings
 LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/dose_response'
 _neo_model = None
 
+class Ratio:
+	def __init__(self, num, denom):
+		self.num = num
+		self.denom = denom
+
+	def __mul__(self, other):
+		return round(other * self.num / self.denom, 5)
+
+	def __rmul__(self, other):
+		return round(other * self.num / self.denom, 5)
+
+	def __rsub__(self, other):
+		return Ratio(other*self.denom - self.num, self.denom)
+
+	def __sub__(self, other):
+		return Ratio(self.num - other*self.denom, self.denom)
+
 class Model:
 	def __init__(self, xs, ys, condition, E_0=100, E_max=None, debug=0):
-		self.xs = xs
-		self.ys = ys
+		if isinstance(condition, str): # single drug
+			self.combo = False
+			self.proportion_a = -1
+			self.xs = xs
+		else: # drug combo
+			self.combo = True
+			self.proportion_a = Ratio(xs[-1][0], xs[-1][0] + xs[-1][1])
+			self.xs = [a + b for a, b in xs]
 		self.condition = condition
+		self.ys = ys
 		self.E_0 = E_0
 		self.E_max = E_max
 
@@ -30,7 +54,7 @@ class Model:
 
 	def chart(self):
 		plt.scatter(self.xs, self.ys, color='black', label='Data', marker='.')
-		plt.xlabel(f'{self.condition} Dose (μM)')
+		plt.xlabel(f'{self.get_condition()} Dose (μM)')
 		plt.ylabel('Pipeline Score')
 
 		max_x = max(self.xs)
@@ -45,7 +69,7 @@ class Model:
 
 		plt.legend()
 		unique_str = str(int(time() * 1000) % 1_620_000_000_000)
-		plt.savefig(f'{LOG_DIR}/{self.condition}_{unique_str}.png')
+		plt.savefig(f'{LOG_DIR}/{self.get_condition()}_{unique_str}.png')
 		plt.close()
 		plt.clf()
 
@@ -68,6 +92,12 @@ class Model:
 
 	def get_absolute_E_max(self):
 		return self.E_max if self.E_max is not None else self.c
+
+	def get_condition(self):
+		if isinstance(self.condition, str): # single drug
+			return self.condition
+		else: # drug combo
+			return '+'.join(self.condition)
 
 	def get_condition_E_max(self):
 		return self.c
