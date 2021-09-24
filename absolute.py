@@ -41,7 +41,7 @@ def get_absolute_value(image, debug=0, transmittance=1, vignette=lambda theta: 1
 
 	H = image.get_raw_value()
 	N = 1 # TODO: get aperture from metadata
-	theta = 1 # TODO: calculate theta from working distance and weighted average of signal in image
+	theta = 1 # TODO: calculate theta from working distance & weighted average(?) of signal in img
 	q = (math.pi / 4) * transmittance * vignette(theta) * math.cos(theta)**4
 	t = metadata['Exposure']['Value']
 
