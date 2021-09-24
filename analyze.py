@@ -106,7 +106,7 @@ def chart(results, chartfile):
 	ax.set_ylim(bottom=0)
 	sns.boxplot(x='group', y='brightness', data=data, showbox=False, showcaps=False,
 		showfliers=False, whiskerprops={'visible': False})
-	plt.xticks(rotation=45)
+	plt.xticks(rotation=90)
 	plt.tight_layout()
 	plt.savefig(chartfile)
 
