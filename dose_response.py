@@ -1,5 +1,5 @@
 import csv
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, OptimizeWarning
 import numpy as np
 import os.path
 import pandas as pd
@@ -46,6 +46,7 @@ class Model:
 		self.equation = lambda xs, b, c, e: log_logistic_model(xs, b, c, E_0, e)
 		with warnings.catch_warnings():
 			warnings.simplefilter('ignore', RuntimeWarning)
+			warnings.simplefilter('ignore', OptimizeWarning)
 			popt, pcov = curve_fit(self.equation, self.xs, self.ys)
 		self.b, self.c, self.e = popt
 
@@ -88,7 +89,13 @@ class Model:
 		min_ = self.get_absolute_E_max()
 		pct_survival = 1 - pct_inhibition
 
-		return e * ((d - c) / (pct_survival * (max_ - min_) + min_ - c) - 1)**(1/b)
+		pct_pts_above_E_max = pct_survival * (max_ - min_) + min_ - c
+
+		if pct_pts_above_E_max < 1:
+			print(f'WARN: {self.get_condition()} EC_{int(pct_inhibition*100)} is unreachable')
+			return np.nan
+
+		return e * ((d - c)/pct_pts_above_E_max - 1)**(1/b)
 
 	def get_absolute_E_max(self):
 		return self.E_max if self.E_max is not None else self.c
@@ -163,10 +170,12 @@ def chart_pair(model_a, model_b, model_combo):
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportion_a):
 	ec_a = model_a.effective_concentration(pct_inhibition)
 	ec_b = model_b.effective_concentration(pct_inhibition)
-
 	ec_combo = model_combo.effective_concentration(pct_inhibition)
-	ec_combo_a, ec_combo_b = ec_combo * combo_proportion_a, ec_combo * (1 - combo_proportion_a)
 
+	if np.isnan(ec_a) or np.isnan(ec_b) or np.isnan(ec_combo):
+		return np.nan
+
+	ec_combo_a, ec_combo_b = ec_combo * combo_proportion_a, ec_combo * (1 - combo_proportion_a)
 	return (ec_combo_a / ec_a) + (ec_combo_b / ec_b)
 
 # Ritz 2009, https://doi.org/10.1002/etc.7, Eq. 2
