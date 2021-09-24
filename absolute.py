@@ -64,7 +64,7 @@ def main(imagefiles, chartfile=None, debug=0, silent=False):
 		results[plate] = relevant_values
 		if not silent:
 			with warnings.catch_warnings():
-				warnings.simplefilter("ignore", RuntimeWarning)
+				warnings.simplefilter('ignore', RuntimeWarning)
 				print(plate, np.nanmedian(relevant_values), relevant_values)
 
 	if chartfile:

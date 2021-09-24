@@ -21,7 +21,7 @@ class Model:
 
 		self.equation = lambda xs, b, c, e: log_logistic_model(xs, b, c, E_0, e)
 		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
+			warnings.simplefilter('ignore', RuntimeWarning)
 			popt, pcov = curve_fit(self.equation, self.xs, self.ys)
 		self.b, self.c, self.e = popt
 

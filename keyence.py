@@ -12,11 +12,11 @@ LAYOUT_DEFAULT = [letter for letter in COLUMNS for _ in range(10)]
 lens_table = 'keyence_BZX800_lenses.csv'
 lenses = {}
 
-def _gethere():
+def _get_here():
 	script = sys.argv[0] if __name__ == '__main__' else __file__
 	return os.path.dirname(os.path.realpath(script))
 
-with open(os.path.join(_gethere(), lens_table), encoding='utf8', newline='') as f:
+with open(os.path.join(_get_here(), lens_table), encoding='utf8', newline='') as f:
 	reader = csv.reader(f, delimiter='\t')
 	next(reader, None) # Skip the header
 
