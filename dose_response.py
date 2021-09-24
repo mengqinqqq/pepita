@@ -1,6 +1,7 @@
 import csv
 from scipy.optimize import curve_fit
 import numpy as np
+import os.path
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -8,6 +9,7 @@ from time import time
 import warnings
 
 LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/dose_response'
+_neo_model = None
 
 class Model:
 	def __init__(self, xs, ys, condition, E_0=100, E_max=None, debug=0):
@@ -112,19 +114,31 @@ def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportio
 def log_logistic_model(xs, b, c, d, e):
 	return c + (d - c) / (1 + (xs / e)**b)
 
+def _get_here():
+	script = sys.argv[0] if __name__ == '__main__' else __file__
+	return os.path.dirname(os.path.realpath(script))
+
+def _get_neo_model():
+	global _neo_model
+	if _neo_model == None:
+		xs, ys = [], []
+
+		with open(os.path.join(_get_here(), 'examples/neo_data.csv'),
+				encoding='utf8', newline='') as f:
+			for x, y in csv.reader(f, delimiter='\t'):
+				xs.append(float(x))
+				ys.append(float(y))
+
+		_neo_model = Model(xs, ys, 'Neomycin')
+
+	return _neo_model
+
 #
 # main
 #
 
 if __name__ == '__main__':
-	xs, ys = [], []
-
-	with open('examples/neo_data.csv', encoding='utf8', newline='') as f:
-		for x, y in csv.reader(f, delimiter='\t'):
-			xs.append(float(x))
-			ys.append(float(y))
-
-	model = Model(xs, ys, 'Neomycin', debug=1)
+	model = _get_neo_model()
 
 	ec_90 = model.effective_concentration(0.9)
 	ec_75 = model.effective_concentration(0.75)
