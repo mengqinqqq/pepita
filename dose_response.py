@@ -40,7 +40,8 @@ class Model:
 		plt.plot(line_xs, np.ones_like(line_xs) * self.E_0, color='lightgrey', label='E_0')
 		plt.plot(line_xs, np.ones_like(line_xs) * self.get_absolute_E_max(),
 			color='lightgrey', label='E_max')
-		plt.scatter(self.e, self.get_ys(self.e), color='black', label='EC_50', marker='+')
+		ec_50 = self.effective_concentration(0.5)
+		plt.scatter(ec_50, self.get_ys(ec_50), color='black', label='EC_50', marker='+')
 
 		plt.legend()
 		unique_str = str(int(time() * 1000) % 1_620_000_000_000)
@@ -55,16 +56,13 @@ class Model:
 		if pct_inhibition <= 0 or pct_inhibition >= 1:
 			raise RuntimeError('Inhibition level must be between 0 and 1')
 
-		pct_survival = 1 - pct_inhibition
-		if pct_survival == 0.5:
-			return self.e
-
 		b = self.b
 		c = self.c
 		d = self.E_0
 		e = self.e
 		max_ = self.E_0
 		min_ = self.get_absolute_E_max()
+		pct_survival = 1 - pct_inhibition
 
 		return e * ((d - c) / (pct_survival * (max_ - min_) + min_ - c) - 1)**(1/b)
 
