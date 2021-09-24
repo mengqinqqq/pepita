@@ -75,7 +75,7 @@ class Model:
 	def get_ys(self, xs):
 		return self.equation(xs, self.b, self.c, self.e)
 
-def chart_combo(model_a, model_b, model_combo):
+def chart_pair(model_a, model_b, model_combo):
 	subconditions_count = len(model_a.xs)
 	data = pd.DataFrame({
 		'concentration': np.concatenate((model_a.xs, model_b.xs, model_combo.xs)),
@@ -147,7 +147,7 @@ if __name__ == '__main__':
 	print('EC_75:', ec_75, 'μM')
 	print('EC_50:', ec_50, 'μM')
 
-	chart_combo(model, model, model)
+	chart_pair(model, model, model)
 	neo_neo_FIC_50 = get_combo_FIC(0.5, model, model, model, 0.5)
 	neo_neo_FIC_90 = get_combo_FIC(0.9, model, model, model, 0.5)
 	print('Neomycin FIC_50, FIC_90:', neo_neo_FIC_50, neo_neo_FIC_90)
