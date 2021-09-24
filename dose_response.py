@@ -9,43 +9,6 @@ import warnings
 
 LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/dose_response'
 
-def chart_combo(model_a, model_b, model_combo):
-	subconditions_count = len(model_a.xs)
-	data = pd.DataFrame({
-		'concentration': np.concatenate((model_a.xs, model_b.xs, model_combo.xs)),
-		'score': np.concatenate((model_a.ys, model_b.ys, model_combo.ys)),
-		'condition': ['A: ' + model_a.condition] * subconditions_count
-			+ ['B: ' + model_b.condition] * subconditions_count
-			+ ['AB: ' + model_combo.condition] * subconditions_count
-	})
-	data = data.pivot_table(
-		index='condition', columns='concentration', values='score', aggfunc='median')
-
-	sns.heatmap(data,
-		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
-		linewidths=0.5, square=True)
-	unique_str = str(int(time() * 1000) % 1_620_000_000_000)
-	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_{unique_str}.png')
-	plt.close()
-	plt.clf()
-
-# Berenbaum 1978, https://doi.org/10.1093/infdis/137.2.122, Eq. 1
-def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportion_a):
-	ec_a = model_a.effective_concentration(pct_inhibition)
-	ec_b = model_b.effective_concentration(pct_inhibition)
-
-	ec_combo = model_combo.effective_concentration(pct_inhibition)
-	ec_combo_a, ec_combo_b = ec_combo * combo_proportion_a, ec_combo * (1 - combo_proportion_a)
-
-	return (ec_combo_a / ec_a) + (ec_combo_b / ec_b)
-
-# Ritz 2009, https://doi.org/10.1002/etc.7, Eq. 2
-# `xs` is a numpy array of x values; b, c, d, and e are model parameters:
-# relative slope at inflection point, lower asymptote, upper asymptote, inflection point (EC_50)
-# returns y values
-def log_logistic_model(xs, b, c, d, e):
-	return c + (d - c) / (1 + (xs / e)**b)
-
 class Model:
 	def __init__(self, xs, ys, condition, E_0=100, E_max=None, debug=0):
 		self.xs = xs
@@ -111,6 +74,43 @@ class Model:
 
 	def get_ys(self, xs):
 		return self.equation(xs, self.b, self.c, self.e)
+
+def chart_combo(model_a, model_b, model_combo):
+	subconditions_count = len(model_a.xs)
+	data = pd.DataFrame({
+		'concentration': np.concatenate((model_a.xs, model_b.xs, model_combo.xs)),
+		'score': np.concatenate((model_a.ys, model_b.ys, model_combo.ys)),
+		'condition': ['A: ' + model_a.condition] * subconditions_count
+			+ ['B: ' + model_b.condition] * subconditions_count
+			+ ['AB: ' + model_combo.condition] * subconditions_count
+	})
+	data = data.pivot_table(
+		index='condition', columns='concentration', values='score', aggfunc='median')
+
+	sns.heatmap(data,
+		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
+		linewidths=0.5, square=True)
+	unique_str = str(int(time() * 1000) % 1_620_000_000_000)
+	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_{unique_str}.png')
+	plt.close()
+	plt.clf()
+
+# Berenbaum 1978, https://doi.org/10.1093/infdis/137.2.122, Eq. 1
+def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportion_a):
+	ec_a = model_a.effective_concentration(pct_inhibition)
+	ec_b = model_b.effective_concentration(pct_inhibition)
+
+	ec_combo = model_combo.effective_concentration(pct_inhibition)
+	ec_combo_a, ec_combo_b = ec_combo * combo_proportion_a, ec_combo * (1 - combo_proportion_a)
+
+	return (ec_combo_a / ec_a) + (ec_combo_b / ec_b)
+
+# Ritz 2009, https://doi.org/10.1002/etc.7, Eq. 2
+# `xs` is a numpy array of x values; b, c, d, and e are model parameters:
+# relative slope at inflection point, lower asymptote, upper asymptote, inflection point (EC_50)
+# returns y values
+def log_logistic_model(xs, b, c, d, e):
+	return c + (d - c) / (1 + (xs / e)**b)
 
 #
 # main
