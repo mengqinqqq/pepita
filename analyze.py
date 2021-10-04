@@ -72,10 +72,8 @@ class Image:
 	def get_raw_value(self, threshold=0.05):
 		if self.value is None:
 			fl_img_masked = imageops.apply_mask(self.get_fl_img(), self.get_mask())
-			fl_max_pixel = fl_img_masked.max()
-			total = fl_img_masked.sum(
-				dtype=np.uint64, where=(fl_img_masked > fl_max_pixel*threshold))
-			self.value = total if total > 0 else np.nan
+			score = imageops.score(fl_img_masked)
+			self.value = score if score > 0 else np.nan
 		return self.value
 
 	def normalize(self, control_values, cap):

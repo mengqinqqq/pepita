@@ -2,6 +2,7 @@ import argparse
 import cv2 as cv
 from skimage import feature
 import imageio
+import math
 import numpy as np
 import os
 import sys
@@ -20,11 +21,11 @@ def binarize(img, threshold):
 	else:
 		return img
 
-def circle_local_maxima(img, count=50, min_pct=0.05, radius=8):
-	coordinates = feature.peak_local_max(img, min_distance=radius, num_peaks=count,
+def circle_local_maxima(img, count=50, discard=0, min_pct=0.05, radius=8):
+	coordinates = _get_local_maxima(img, count=count+discard, spacing=radius,
 		threshold_rel=min_pct)
 	maxima = np.zeros_like(img)
-	for coordinate in coordinates:
+	for coordinate in coordinates[discard:]:
 		maxima[coordinate[0]][coordinate[1]] = 255
 	return dilate(maxima, size=radius)
 
@@ -76,7 +77,8 @@ def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_
 		if particles:
 			steps = (
 				lambda img_i: apply_mask(fl_img, mask_img),
-				lambda img_i: circle_local_maxima(img_i, count=50, min_pct=0.05, radius=8),
+				lambda img_i: circle_local_maxima(
+					img_i, count=10, discard=5, min_pct=0.05, radius=8),
 			)
 		else:
 			show(apply_mask(bf_img, mask_img), verbose, v_file_prefix=v_file_prefix)
@@ -99,7 +101,8 @@ def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_
 			steps = (
 				*steps,
 				lambda img_i: apply_mask(fl_img, img_i),
-				lambda img_i: circle_local_maxima(img_i, count=50, min_pct=0.05, radius=8),
+				lambda img_i: circle_local_maxima(
+					img_i, count=10, discard=5, min_pct=0.05, radius=8),
 			)
 
 	mask = _get_mask(bf_img, steps, verbose, v_file_prefix=v_file_prefix)
@@ -141,6 +144,24 @@ def rescale_brightness(img):
 def resize(img, factor):
 	return cv.resize(img, None, fx=factor, fy=factor)
 
+def score(img, count=10, radius=8, threshold_pct=0.05):
+	coordinates = _get_local_maxima(img, count=count, spacing=radius)
+	height, width = img.shape
+	total = 0
+
+	for coord_y, coord_x in coordinates:
+		x_min, x_max = max(coord_x - radius, 0), min(coord_x + radius, width) # bounding box
+		y_min, y_max = max(coord_y - radius, 0), min(coord_y + radius, height)#
+		points = []
+		for x in range(x_min, x_max + 1):
+			for y in range(y_min, y_max + 1):
+				if (x - coord_x)**2 + (y - coord_y)**2 > radius**2: # Pythagorean theorem
+					continue
+				points.append(img[y][x])
+		relevant_points = sorted(points, reverse=True)[:int(len(points)*threshold_pct)]
+		total += sum(relevant_points)
+	return total
+
 def show(img, verbose=True, v_file_prefix=''):
 	if verbose:
 		unique_str = str(int(time() * 1000) % 1_620_000_000_000)
@@ -158,6 +179,10 @@ def _get_bit_depth(img):
 
 def _get_kernel(size):
 	return cv.getStructuringElement(cv.MORPH_ELLIPSE, (size*2 + 1, size*2 + 1), (size, size))
+
+def _get_local_maxima(img, count=10, spacing=5, threshold_rel=0.1):
+	return feature.peak_local_max(img, min_distance=spacing, num_peaks=count,
+		threshold_rel=threshold_rel)
 
 def _get_mask(img, steps, verbose=False, v_file_prefix=''):
 	img_i = img
