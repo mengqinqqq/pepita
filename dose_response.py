@@ -166,8 +166,12 @@ def chart_pair(model_a, model_b, model_combo):
 	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_model_{unique_str}.png')
 	plt.clf()
 
-# Berenbaum 1978, https://doi.org/10.1093/infdis/137.2.122, Eq. 1
+# derived from Grabovsky and Tallarida 2004, http://doi.org/10.1124/jpet.104.067264, Eq. 3
+# FIC = (b_i + B_E50_b/((E_max_b/E_max_a)(1 + A_E50_a^q/a_i^q) - 1)^(1/p)) / B_i
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportion_a):
+	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
+	model_a, model_b = (model_a, model_b) if model_b.c < model_a.c else (model_b, model_a)
+
 	ec_a = model_a.effective_concentration(pct_inhibition)
 	ec_b = model_b.effective_concentration(pct_inhibition)
 	ec_combo = model_combo.effective_concentration(pct_inhibition)
@@ -176,7 +180,10 @@ def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportio
 		return np.nan
 
 	ec_combo_a, ec_combo_b = ec_combo * combo_proportion_a, ec_combo * (1 - combo_proportion_a)
-	return (ec_combo_a / ec_a) + (ec_combo_b / ec_b)
+	return (ec_combo_b \
+		+ model_b.e/((model_b.c / model_a.c)*(1 + model_a.e**model_a.b / ec_a**model_a.b) - 1) \
+			**(1/model_b.b)) \
+				/ ec_b
 
 # Ritz 2009, https://doi.org/10.1002/etc.7, Eq. 2
 # `xs` is a numpy array of x values; b, c, d, and e are model parameters:
