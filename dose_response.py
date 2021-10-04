@@ -63,8 +63,10 @@ class Model:
 		line_ys = self.get_ys(line_xs)
 		plt.plot(line_xs, line_ys, color='darkgrey', label='Model')
 		plt.plot(line_xs, np.ones_like(line_xs) * self.E_0, color='lightgrey', label='E_0')
-		plt.plot(line_xs, np.ones_like(line_xs) * self.get_absolute_E_max(),
+		plt.plot(line_xs, np.ones_like(line_xs) * self.get_condition_E_max(),
 			color='lightgrey', label='E_max')
+		plt.plot(line_xs, np.ones_like(line_xs) * self.get_absolute_E_max(),
+			color='lightgrey', label='Abs_max')
 		ec_50 = self.effective_concentration(0.5)
 		plt.scatter(ec_50, self.get_ys(ec_50), color='black', label='EC_50', marker='+')
 
@@ -211,7 +213,7 @@ def _get_neo_model():
 				xs.append(float(x))
 				ys.append(float(y))
 
-		_neo_model = Model(xs, ys, 'Neomycin')
+		_neo_model = Model(xs, ys, 'Neomycin', debug=1)
 
 	return _neo_model
 
