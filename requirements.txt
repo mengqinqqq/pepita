@@ -1,0 +1,6 @@
+imagecodecs
+matplotlib
+opencv-python
+pandas
+seaborn
+scikit-image>=0.18
