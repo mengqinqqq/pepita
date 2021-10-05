@@ -25,6 +25,9 @@ class Ratio:
 	def __rmul__(self, other):
 		return round(other * self.num / self.denom, 5)
 
+	def __repr__(self):
+		return f'{self.num}/{self.denom}'
+
 	def __rsub__(self, other):
 		return Ratio(other*self.denom - self.num, self.denom)
 
@@ -227,12 +230,16 @@ if __name__ == '__main__':
 	ec_75 = model.effective_concentration(0.75)
 	ec_50 = model.effective_concentration(0.5)
 
-	print('E_max:', model.get_absolute_E_max(), 'score')
-	print('EC_90:', ec_90, 'μM')
-	print('EC_75:', ec_75, 'μM')
-	print('EC_50:', ec_50, 'μM')
+	print(f'E_max: {model.get_absolute_E_max()} score')
+	print(f'EC_90: {ec_90} μM')
+	print(f'ec_75: {ec_75} μM')
+	print(f'ec_50: {ec_50} μM')
 
-	chart_pair(model, model, model)
-	neo_neo_FIC_50 = get_combo_FIC(0.5, model, model, model, 0.5)
-	neo_neo_FIC_90 = get_combo_FIC(0.9, model, model, model, 0.5)
-	print('Neomycin FIC_50, FIC_90:', neo_neo_FIC_50, neo_neo_FIC_90)
+	model_a = Model(model.xs, model.ys, 'Neo1')
+	model_b = Model(model.xs, model.ys, 'Neo2')
+	model_combo = Model([(x/2, x/2) for x in model.xs], model.ys, ('Neo1', 'Neo2'))
+
+	chart_pair(model_a, model_b, model_combo)
+	neo_neo_FIC_50 = get_combo_FIC(0.5, model_a, model_b, model_combo, 0.5)
+	neo_neo_FIC_90 = get_combo_FIC(0.9, model_a, model_b, model_combo, 0.5)
+	print(f'Neomycin self-combo FIC_50, FIC_90: {neo_neo_FIC_50}, {neo_neo_FIC_90}')

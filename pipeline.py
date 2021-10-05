@@ -45,6 +45,8 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 	combo_FIC_75 = dose_response.get_combo_FIC(
 		0.75, model_a, model_b, model_combo, model_combo.proportion_a)
 	print(f'{model_combo.get_condition()}: FIC_50 {combo_FIC_50}, FIC_75 {combo_FIC_75}')
+	print(f'EC_50: {model_a.condition}={model_a.effective_concentration(0.5)}, {model_b.condition}={model_b.effective_concentration(0.5)}, {model_combo.condition}={model_combo.effective_concentration(0.5)}')
+	print(f'EC_75: {model_a.condition}={model_a.effective_concentration(0.75)}, {model_b.condition}={model_b.effective_concentration(0.75)}, {model_combo.condition}={model_combo.effective_concentration(0.75)}')
 
 def condition2key(drug, dose, unit):
 	if isinstance(drug, str): # single drug
@@ -88,9 +90,11 @@ def _put(dict_, key, value):
 
 def _string2float(string_or_iterable):
 	if isinstance(string_or_iterable, str):
-		return float(string_or_iterable)
+		string = string_or_iterable
+		return float(string)
 	else:
-		return tuple(float(s) for s in string_or_iterable)
+		iterable = string_or_iterable
+		return tuple(float(string) for string in iterable)
 
 #
 # main
