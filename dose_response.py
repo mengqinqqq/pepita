@@ -201,16 +201,12 @@ def neo_E_max():
 	neo_model = _get_neo_model()
 	return _neo_model.get_condition_E_max()
 
-def _get_here():
-	script = sys.argv[0] if __name__ == '__main__' else __file__
-	return os.path.dirname(os.path.realpath(script))
-
 def _get_neo_model():
 	global _neo_model
 	if _neo_model == None:
 		xs, ys = [], []
 
-		with open(os.path.join(_get_here(), 'examples/neo_data.csv'),
+		with open(os.path.join(util.get_here(), 'examples/neo_data.csv'),
 				encoding='utf8', newline='') as f:
 			for x, y in csv.reader(f, delimiter='\t'):
 				xs.append(float(x))
