@@ -9,7 +9,9 @@ import sys
 from time import time
 import warnings
 
-LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/imageops'
+import util
+
+LOG_DIR = f'{util.get_config("log_dir")}/imageops'
 
 def apply_mask(img, mask):# mask should have black background, white foreground
 	img_type = _get_bit_depth(img)

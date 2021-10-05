@@ -8,7 +8,9 @@ import seaborn as sns
 from time import time
 import warnings
 
-LOG_DIR = '/mnt/c/Users/ethan/Pictures/zebrafish/dose_response'
+import util
+
+LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
 _neo_model = None
 
 class Ratio:
