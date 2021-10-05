@@ -189,7 +189,7 @@ def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportio
 
 	ec_combo_a, ec_combo_b = ec_combo * combo_proportion_a, ec_combo * (1 - combo_proportion_a)
 	return (ec_combo_b \
-		+ model_b.e/((model_b.c / model_a.c)*(1 + model_a.e**model_a.b / ec_a**model_a.b) - 1) \
+		+ model_b.e/((model_b.c / model_a.c)*(1 + model_a.e**model_a.b / ec_combo_a**model_a.b) - 1) \
 			**(1/model_b.b)) \
 				/ ec_b
 
