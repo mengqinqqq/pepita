@@ -47,6 +47,7 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 	print(f'{model_combo.get_condition()}: FIC_50 {combo_FIC_50}, FIC_75 {combo_FIC_75}')
 	print(f'EC_50: {model_a.condition}={model_a.effective_concentration(0.5)}, {model_b.condition}={model_b.effective_concentration(0.5)}, {model_combo.condition}={model_combo.effective_concentration(0.5)}')
 	print(f'EC_75: {model_a.condition}={model_a.effective_concentration(0.75)}, {model_b.condition}={model_b.effective_concentration(0.75)}, {model_combo.condition}={model_combo.effective_concentration(0.75)}')
+	print(f'EC_90: {model_a.condition}={model_a.effective_concentration(0.9)}, {model_b.condition}={model_b.effective_concentration(0.9)}, {model_combo.condition}={model_combo.effective_concentration(0.9)}')
 
 def condition2key(drug, dose, unit):
 	if isinstance(drug, str): # single drug
