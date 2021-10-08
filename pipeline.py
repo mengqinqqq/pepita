@@ -9,6 +9,7 @@ import warnings
 
 import analyze
 import dose_response
+import util
 
 def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefile=None,
 		plate_control=['B'], plate_ignore=[], silent=False):
@@ -28,8 +29,6 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 			with warnings.catch_warnings():
 				warnings.simplefilter('ignore', RuntimeWarning)
 				summary_score = np.nanmedian(results[condition2key(drug, dose, unit)])
-				if np.isnan(summary_score):
-					continue
 				scores.append(summary_score)
 			doses.append(_string2float(dose))
 		print(drug, doses, scores)
@@ -69,7 +68,7 @@ def _parse_results(results):
 			if not match:
 				raise analyze.UserError(_condition_error(condition))
 			drug, dose, unit = match.group(1, 2, 3)
-			_put(drug_conditions, drug, (dose, unit))
+			util.put_multimap(drug_conditions, drug, (dose, unit))
 		else: # drug combo
 			match1 = condition_pattern.match(conditions[0])
 			if not match1:
@@ -79,13 +78,8 @@ def _parse_results(results):
 				raise analyze.UserError(_condition_error(condition))
 			drug1, dose1, unit1 = match1.group(1, 2, 3)
 			drug2, dose2, unit2 = match2.group(1, 2, 3)
-			_put(drug_conditions, (drug1, drug2), ((dose1, dose2), (unit1, unit2)))
+			util.put_multimap(drug_conditions, (drug1, drug2), ((dose1, dose2), (unit1, unit2)))
 	return drug_conditions
-
-def _put(dict_, key, value):
-	list_ = dict_.get(key, [])
-	list_.append(value)
-	dict_[key] = list_
 
 def _string2float(string_or_iterable):
 	if isinstance(string_or_iterable, str):

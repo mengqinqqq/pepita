@@ -15,3 +15,8 @@ def get_config(setting, fallback=None):
 def get_here():
 	script = sys.argv[0] if __name__ == '__main__' else __file__
 	return os.path.dirname(os.path.realpath(script))
+
+def put_multimap(dict_, key, value):
+	list_ = dict_.get(key, [])
+	list_.append(value)
+	dict_[key] = list_

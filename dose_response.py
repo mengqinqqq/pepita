@@ -126,26 +126,15 @@ class Model:
 def chart_pair(model_a, model_b, model_combo):
 	# data chart
 
-	complete_combos = []
-	for combo_x, combo_y in zip(model_combo.xs, model_combo.ys):
-		concentration_a = 2 * combo_x * model_combo.proportion_a
-		concentration_b = 2 * combo_x * (1 - model_combo.proportion_a)
-		if concentration_a in model_a.xs and concentration_b in model_b.xs:
-			a_y = model_a.ys[model_a.xs.index(concentration_a)]
-			b_y = model_b.ys[model_b.xs.index(concentration_b)]
-			complete_combos.append((combo_x, a_y, b_y, combo_y))
-
 	data = pd.DataFrame({
-		'concentration': [combo_x for combo_x, _, _, _ in complete_combos] * 3,
-		'score': [a_y for _, a_y, _, _ in complete_combos]
-			+ [b_y for _, _, b_y, _ in complete_combos]
-			+ [combo_y for _, _, _, combo_y in complete_combos],
-		'condition': [model_a.condition] * len(complete_combos)
-			+ [model_b.condition] * len(complete_combos)
-			+ ['+'.join(model_combo.condition)] * len(complete_combos)
+		'concentration': list(model_combo.xs) * 3,
+		'score': list(model_a.ys) + list(model_b.ys) + list(model_combo.ys),
+		'condition': [model_a.condition] * len(model_a.xs)
+			+ [model_b.condition] * len(model_b.xs)
+			+ ['+'.join(model_combo.condition)] * len(model_combo.xs)
 	})
 	data = data.pivot_table(
-		index='condition', columns='concentration', values='score', aggfunc='median')
+		index='condition', columns='concentration', values='score', aggfunc=np.nanmean)
 
 	sns.heatmap(data,
 		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
