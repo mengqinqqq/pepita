@@ -40,10 +40,8 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 	model_a = next(model for model in models if model.condition == model_combo.condition[0])
 	model_b = next(model for model in models if model.condition == model_combo.condition[1])
 	dose_response.chart_pair(model_a, model_b, model_combo)
-	combo_FIC_50 = dose_response.get_combo_FIC(
-		0.5, model_a, model_b, model_combo, model_combo.proportion_a)
-	combo_FIC_75 = dose_response.get_combo_FIC(
-		0.75, model_a, model_b, model_combo, model_combo.proportion_a)
+	combo_FIC_50 = dose_response.get_combo_FIC(0.5, model_a, model_b, model_combo)
+	combo_FIC_75 = dose_response.get_combo_FIC(0.75, model_a, model_b, model_combo)
 	print(f'{model_combo.get_condition()}: FIC_50 {combo_FIC_50}, FIC_75 {combo_FIC_75}')
 	print(f'EC_50: {model_a.condition}={model_a.effective_concentration(0.5)}, {model_b.condition}={model_b.effective_concentration(0.5)}, {model_combo.condition}={model_combo.effective_concentration(0.5)}')
 	print(f'EC_75: {model_a.condition}={model_a.effective_concentration(0.75)}, {model_b.condition}={model_b.effective_concentration(0.75)}, {model_combo.condition}={model_combo.effective_concentration(0.75)}')

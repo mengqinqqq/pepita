@@ -59,6 +59,9 @@ class Model:
 		if debug > 0:
 			self.chart()
 
+	def __repr__(self):
+		return "{}({})".format(self.__class__.__name__, self.condition)
+
 	def chart(self):
 		plt.scatter(self.xs, self.ys, color='black', label='Data', marker='.')
 		plt.xlabel(f'{self.get_condition()} Dose (μM)')
@@ -174,24 +177,41 @@ def chart_pair(model_a, model_b, model_combo):
 	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_model_{unique_str}.png')
 	plt.clf()
 
-# derived from Grabovsky and Tallarida 2004, http://doi.org/10.1124/jpet.104.067264, Eq. 3
-# FIC = (b_i + B_E50_b/((E_max_b/E_max_a)(1 + A_E50_a^q/a_i^q) - 1)^(1/p)) / B_i
-def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_proportion_a):
+def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
-	model_a, model_b = (model_a, model_b) if model_b.c < model_a.c else (model_b, model_a)
+	if model_a.c < model_b.c:
+		model_a, model_b = model_b, model_a
+		combo_proportion_a = 1 - model_combo.proportion_a
+	else:
+		combo_proportion_a = model_combo.proportion_a
 
-	ec_a = model_a.effective_concentration(pct_inhibition)
-	ec_b = model_b.effective_concentration(pct_inhibition)
+	ec_b_alone = model_b.effective_concentration(pct_inhibition)
 	ec_combo = model_combo.effective_concentration(pct_inhibition)
 
-	if np.isnan(ec_a) or np.isnan(ec_b) or np.isnan(ec_combo):
+	if np.isnan(ec_b_alone) or np.isnan(ec_combo):
 		return np.nan
 
-	ec_combo_a, ec_combo_b = ec_combo * combo_proportion_a, ec_combo * (1 - combo_proportion_a)
-	return (ec_combo_b \
-		+ model_b.e/((model_b.c / model_a.c)*(1 + model_a.e**model_a.b / ec_combo_a**model_a.b) - 1) \
-			**(1/model_b.b)) \
-				/ ec_b
+	ec_combo_a = ec_combo * combo_proportion_a
+	ec_combo_b = ec_combo * (1 - combo_proportion_a)
+	inhibition_max_a = model_a.E_0 - model_a.c
+	inhibition_max_b = model_b.E_0 - model_b.c
+
+	return do_FIC(ec_combo_a, ec_combo_b, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b,
+		ec_b_alone, model_b.b, model_a.b)
+
+# derived from Grabovsky and Tallarida 2004, http://doi.org/10.1124/jpet.104.067264, Eq. 3
+# where B is the drug with the higher maximum effect = lower survival at maximum effect
+# a_i = amount of A in combination required to reach relevant effect level
+# b_i = amount of B in combination required to reach relevant effect level
+# A_E50_a = amount of A alone required to reach 50% of A's maximum effect
+# B_E50_b = amount of B alone required to reach 50% of B's maximum effect
+# E_max_a = A's maximum effect
+# E_max_b = B's maximum effect
+# B_i = amount of B alone required to reach relevant effect level
+# p = Hill function coefficient for B's dose-response curve
+# q = Hill function coefficient for A's dose-response curve
+def do_FIC(a_i, b_i, A_E50_a, B_E50_b, E_max_a, E_max_b, B_i, p, q):
+	return (b_i + B_E50_b/((E_max_b/E_max_a)*(1 + A_E50_a**q/a_i**q) - 1)**(1/p)) / B_i
 
 # Ritz 2009, https://doi.org/10.1002/etc.7, Eq. 2
 # `xs` is a numpy array of x values; b, c, d, and e are model parameters:
@@ -240,6 +260,6 @@ if __name__ == '__main__':
 	model_combo = Model([(x/2, x/2) for x in model.xs], model.ys, ('Neo1', 'Neo2'))
 
 	chart_pair(model_a, model_b, model_combo)
-	neo_neo_FIC_50 = get_combo_FIC(0.5, model_a, model_b, model_combo, 0.5)
-	neo_neo_FIC_90 = get_combo_FIC(0.9, model_a, model_b, model_combo, 0.5)
-	print(f'Neomycin self-combo FIC_50, FIC_90: {neo_neo_FIC_50}, {neo_neo_FIC_90}')
+	neo_neo_FIC_50 = get_combo_FIC(0.5, model_a, model_b, model_combo)
+	neo_neo_FIC_90 = get_combo_FIC(0.9, model_a, model_b, model_combo)
+	print(f'Neomycin self-combo FIC_50={neo_neo_FIC_50}, FIC_90={neo_neo_FIC_90}')
