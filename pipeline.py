@@ -17,12 +17,16 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 		plate_control, plate_ignore, True)
 
 	drug_conditions = _parse_results(results)
+	control_drugs = [(util.Dose(control).drug,) for control in plate_control]
 	models = {}
 
 	for drug, conditions in drug_conditions.items():
 		if len(conditions) < 3: # can't create a proper model with less than 3 datapoints
 			continue
 		scores = []
+		for control_drug in control_drugs:
+			for solution in drug_conditions[control_drug]:
+				conditions.insert(0, solution)
 		for solution in conditions:
 			with warnings.catch_warnings():
 				warnings.simplefilter('ignore', RuntimeWarning)
