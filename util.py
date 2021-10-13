@@ -1,4 +1,5 @@
 import configparser
+import csv
 import os
 import re
 
@@ -6,6 +7,7 @@ _config = None
 _section = 'Main'
 
 class Dose:
+	_ec_pattern = re.compile(r'([0-9]*)([A-Z]{3}[0-9]{2})/?([0-9]*)')
 	_vector_pattern = re.compile(r'(.+?) ([0-9]+[.]?[0-9]*) ?([^0-9]+)')
 
 	def __add__(self, other):
@@ -22,15 +24,34 @@ class Dose:
 		return hash(self.drug) ^ hash(self.quantity) ^ hash(self.unit)
 
 	def __init__(self, string):
+		self.ec = False
 		self.string = string
 
-		vector_match = Dose._vector_pattern.match(string)
+		ec_match = Dose._ec_pattern.match(string)
+
+		if ec_match:
+			self.ec = True
+			with open(os.path.join(get_here(), 'examples/ec_data.csv'),
+					encoding='utf8', newline='') as f:
+				ecs = {ec: vector for ec, vector in csv.reader(f, delimiter='\t')}
+			multiplier, ec_data, divisor = ec_match.group(1, 2, 3)
+			vector_match = Dose._vector_pattern.match(ecs.get(ec_data, None))
+			self.series = ec_data
+		else:
+			vector_match = Dose._vector_pattern.match(string)
+			self.series = vector_match.group(1)
+			multiplier, divisor = None, None
 
 		if vector_match:
 			self.drug, self.quantity, self.unit = vector_match.group(1, 2, 3)
 			self.quantity = float(self.quantity)
 		else:
 			raise ValueError(f'Dose string "{string}" is not in the proper format')
+
+		if multiplier:
+			self.quantity *= int(multiplier)
+		if divisor:
+			self.quantity /= int(divisor)
 
 	def __radd__(self, other):
 		return Dose(self.string.replace(str(self.quantity), str(self.quantity + other)))
