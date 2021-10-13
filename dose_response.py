@@ -124,6 +124,20 @@ def chart_pair(model_a, model_b, model_combo):
 		f'{LOG_DIR}/combo_{model_a.get_condition()}-{model_b.get_condition()}_model_{uniq_str}.png')
 	plt.clf()
 
+# derived from Grabovsky and Tallarida 2004, http://doi.org/10.1124/jpet.104.067264, Eq. 3
+# where B is the drug with the higher maximum effect = lower survival at maximum effect
+# a_i = amount of A in combination required to reach relevant effect level
+# b_i = amount of B in combination required to reach relevant effect level
+# A_E50_a = amount of A alone required to reach 50% of A's maximum effect
+# B_E50_b = amount of B alone required to reach 50% of B's maximum effect
+# E_max_a = A's maximum effect
+# E_max_b = B's maximum effect
+# B_i = amount of B alone required to reach relevant effect level
+# p = Hill function coefficient for B's dose-response curve
+# q = Hill function coefficient for A's dose-response curve
+def do_FIC(a_i, b_i, A_E50_a, B_E50_b, E_max_a, E_max_b, B_i, p, q):
+	return (b_i + B_E50_b/((E_max_b/E_max_a)*(1 + A_E50_a**q/a_i**q) - 1)**(1/p)) / B_i
+
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
 	combo_proportion_a = model_combo.xs[-1].ratio()
@@ -144,20 +158,6 @@ def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 
 	return do_FIC(ec_combo_a, ec_combo_b, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b,
 		ec_b_alone, model_b.b, model_a.b)
-
-# derived from Grabovsky and Tallarida 2004, http://doi.org/10.1124/jpet.104.067264, Eq. 3
-# where B is the drug with the higher maximum effect = lower survival at maximum effect
-# a_i = amount of A in combination required to reach relevant effect level
-# b_i = amount of B in combination required to reach relevant effect level
-# A_E50_a = amount of A alone required to reach 50% of A's maximum effect
-# B_E50_b = amount of B alone required to reach 50% of B's maximum effect
-# E_max_a = A's maximum effect
-# E_max_b = B's maximum effect
-# B_i = amount of B alone required to reach relevant effect level
-# p = Hill function coefficient for B's dose-response curve
-# q = Hill function coefficient for A's dose-response curve
-def do_FIC(a_i, b_i, A_E50_a, B_E50_b, E_max_a, E_max_b, B_i, p, q):
-	return (b_i + B_E50_b/((E_max_b/E_max_a)*(1 + A_E50_a**q/a_i**q) - 1)**(1/p)) / B_i
 
 # Ritz 2009, https://doi.org/10.1002/etc.7, Eq. 2
 # `xs` is a numpy array of x values; b, c, d, and e are model parameters:
