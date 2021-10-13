@@ -123,15 +123,16 @@ def chart_pair(model_a, model_b, model_combo):
 
 	# model chart
 
-	max_x = int(max(max(model_a.xs), max(model_b.xs)))
-	max_x = max_x + 5 - (max_x % 5) # round up to the nearest 5
-	xs = list(range(0, int(max_x), int(max_x / 5)))
 	data = pd.DataFrame({
-		'concentration': xs * 3,
-		'score': np.concatenate((model_a.get_ys(xs), model_b.get_ys(xs), model_combo.get_ys(xs))),
-		'condition': [model_a.get_condition()] * len(xs)
-			+ [model_b.get_condition()] * len(xs)
-			+ [model_combo.get_condition()] * len(xs)
+		'concentration': list(model_combo.xs) * 3,
+		'score': np.concatenate((
+			model_a.get_ys(np.array([float(x) for x in model_a.xs])),
+			model_b.get_ys(np.array([float(x) for x in model_b.xs])),
+			model_combo.get_ys(np.array([float(x) for x in model_combo.xs]))
+		)),
+		'condition': [model_a.get_condition()] * len(model_a.xs)
+			+ [model_b.get_condition()] * len(model_b.xs)
+			+ [model_combo.get_condition()] * len(model_combo.xs)
 	})
 	data = data.pivot_table(
 		index='condition', columns='concentration', values='score', aggfunc='median')
