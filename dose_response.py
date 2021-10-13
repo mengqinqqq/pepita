@@ -54,8 +54,8 @@ class Model:
 		plt.scatter(ec_50, self.get_ys(ec_50), color='black', label='EC_50', marker='+')
 
 		plt.legend()
-		unique_str = str(int(time() * 1000) % 1_620_000_000_000)
-		plt.savefig(f'{LOG_DIR}/{self.get_condition()}_{unique_str}.png')
+		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+		plt.savefig(f'{LOG_DIR}/{self.get_condition()}_{uniq_str}.png')
 		plt.close()
 		plt.clf()
 
@@ -116,9 +116,10 @@ def chart_pair(model_a, model_b, model_combo):
 	sns.heatmap(data,
 		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
 		linewidths=1, square=True)
-	unique_str = str(int(time() * 1000) % 1_620_000_000_000)
+	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Raw Data')
-	plt.savefig(f'{LOG_DIR}/combo_{model_a.get_condition()}-{model_b.get_condition()}_data_{unique_str}.png')
+	plt.savefig(
+		f'{LOG_DIR}/combo_{model_a.get_condition()}-{model_b.get_condition()}_data_{uniq_str}.png')
 	plt.clf()
 
 	# model chart
@@ -141,7 +142,8 @@ def chart_pair(model_a, model_b, model_combo):
 		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
 		linewidths=1, square=True)
 	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Model')
-	plt.savefig(f'{LOG_DIR}/combo_{model_a.get_condition()}-{model_b.get_condition()}_model_{unique_str}.png')
+	plt.savefig(
+		f'{LOG_DIR}/combo_{model_a.get_condition()}-{model_b.get_condition()}_model_{uniq_str}.png')
 	plt.clf()
 
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):

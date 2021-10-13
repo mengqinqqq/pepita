@@ -38,9 +38,21 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 	combo_FIC_50 = dose_response.get_combo_FIC(0.5, model_a, model_b, model_combo)
 	combo_FIC_75 = dose_response.get_combo_FIC(0.75, model_a, model_b, model_combo)
 	print(f'{model_combo.get_condition()}: FIC_50 {combo_FIC_50}, FIC_75 {combo_FIC_75}')
-	print(f'EC_50: {model_a.get_condition()}={model_a.effective_concentration(0.5)}, {model_b.get_condition()}={model_b.effective_concentration(0.5)}, {model_combo.get_condition()}={model_combo.effective_concentration(0.5)}')
-	print(f'EC_75: {model_a.get_condition()}={model_a.effective_concentration(0.75)}, {model_b.get_condition()}={model_b.effective_concentration(0.75)}, {model_combo.get_condition()}={model_combo.effective_concentration(0.75)}')
-	print(f'EC_90: {model_a.get_condition()}={model_a.effective_concentration(0.9)}, {model_b.get_condition()}={model_b.effective_concentration(0.9)}, {model_combo.get_condition()}={model_combo.effective_concentration(0.9)}')
+	print((
+		f'EC_50: {model_a.get_condition()}={model_a.effective_concentration(0.5)}, '
+		f'{model_b.get_condition()}={model_b.effective_concentration(0.5)}, '
+		f'{model_combo.get_condition()}={model_combo.effective_concentration(0.5)}'
+	))
+	print((
+		f'EC_75: {model_a.get_condition()}={model_a.effective_concentration(0.75)}, '
+		f'{model_b.get_condition()}={model_b.effective_concentration(0.75)}, '
+		f'{model_combo.get_condition()}={model_combo.effective_concentration(0.75)}'
+	))
+	print((
+		f'EC_90: {model_a.get_condition()}={model_a.effective_concentration(0.9)}, '
+		f'{model_b.get_condition()}={model_b.effective_concentration(0.9)}, '
+		f'{model_combo.get_condition()}={model_combo.effective_concentration(0.9)}'
+	))
 
 def _parse_results(results):
 	drug_conditions = {}

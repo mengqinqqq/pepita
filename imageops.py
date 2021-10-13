@@ -90,8 +90,8 @@ def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_
 			rescale_brightness,
 			lambda img_i: binarize(img_i, threshold=2**14),
 			lambda img_i: apply_mask(
-				img_i, get_size_mask(bf_img, erosions=10, threshold=2**12, lower=2**15, verbose=verbose,
-					v_file_prefix=v_file_prefix)),
+				img_i, get_size_mask(bf_img, erosions=10, threshold=2**12, lower=2**15,
+					verbose=verbose, v_file_prefix=v_file_prefix)),
 			lambda img_i: close(img_i, size=6, iterations=16),
 			lambda img_i: dilate(img_i, size=5, iterations=6),
 			lambda img_i: get_size_mask(
