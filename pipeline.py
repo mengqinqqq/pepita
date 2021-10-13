@@ -17,77 +17,37 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 		plate_control, plate_ignore, True)
 
 	drug_conditions = _parse_results(results)
-	models = []
+	models = {}
 
-	for drug, subconditions in drug_conditions.items():
-		if len(subconditions) <= 1:
-			print(drug, 'skipped:', subconditions)
+	for drug, conditions in drug_conditions.items():
+		if len(conditions) < 3: # can't create a proper model with less than 3 datapoints
 			continue
-		doses = []
 		scores = []
-		for dose, unit in subconditions:
+		for solution in conditions:
 			with warnings.catch_warnings():
 				warnings.simplefilter('ignore', RuntimeWarning)
-				summary_score = np.nanmedian(results[condition2key(drug, dose, unit)])
+				summary_score = np.nanmedian(results[solution.string])
 				scores.append(summary_score)
-			doses.append(_string2float(dose))
-		print(drug, doses, scores)
-		model = dose_response.Model(doses, scores, drug, E_max=dose_response.neo_E_max(), debug=1)
-		models.append(model)
+		models[drug] = dose_response.Model(
+			conditions, scores, drug, E_max=dose_response.neo_E_max(), debug=1)
 
-	model_combo = next(model for model in models if model.combo)
-	model_a = next(model for model in models if model.condition == model_combo.condition[0])
-	model_b = next(model for model in models if model.condition == model_combo.condition[1])
+	model_combo = next(model for model in models.values() if model.combo)
+	model_a = models[(model_combo.condition[0],)]
+	model_b = models[(model_combo.condition[1],)]
 	dose_response.chart_pair(model_a, model_b, model_combo)
 	combo_FIC_50 = dose_response.get_combo_FIC(0.5, model_a, model_b, model_combo)
 	combo_FIC_75 = dose_response.get_combo_FIC(0.75, model_a, model_b, model_combo)
 	print(f'{model_combo.get_condition()}: FIC_50 {combo_FIC_50}, FIC_75 {combo_FIC_75}')
-	print(f'EC_50: {model_a.condition}={model_a.effective_concentration(0.5)}, {model_b.condition}={model_b.effective_concentration(0.5)}, {model_combo.condition}={model_combo.effective_concentration(0.5)}')
-	print(f'EC_75: {model_a.condition}={model_a.effective_concentration(0.75)}, {model_b.condition}={model_b.effective_concentration(0.75)}, {model_combo.condition}={model_combo.effective_concentration(0.75)}')
-	print(f'EC_90: {model_a.condition}={model_a.effective_concentration(0.9)}, {model_b.condition}={model_b.effective_concentration(0.9)}, {model_combo.condition}={model_combo.effective_concentration(0.9)}')
-
-def condition2key(drug, dose, unit):
-	if isinstance(drug, str): # single drug
-		return f'{drug} {dose}{unit}'
-	else: # drug combo
-		return f'{drug[0]} {dose[0]}{unit[0]} + {drug[1]} {dose[1]}{unit[1]}'
-
-def _condition_error(condition):
-	return f'Condition {condition} is not in the proper format. Conditions should be ' +\
-		'represented as "[drug] [dose][units]". Combinations should be two such strings joined ' +\
-			'with a " + ".'
+	print(f'EC_50: {model_a.get_condition()}={model_a.effective_concentration(0.5)}, {model_b.get_condition()}={model_b.effective_concentration(0.5)}, {model_combo.get_condition()}={model_combo.effective_concentration(0.5)}')
+	print(f'EC_75: {model_a.get_condition()}={model_a.effective_concentration(0.75)}, {model_b.get_condition()}={model_b.effective_concentration(0.75)}, {model_combo.get_condition()}={model_combo.effective_concentration(0.75)}')
+	print(f'EC_90: {model_a.get_condition()}={model_a.effective_concentration(0.9)}, {model_b.get_condition()}={model_b.effective_concentration(0.9)}, {model_combo.get_condition()}={model_combo.effective_concentration(0.9)}')
 
 def _parse_results(results):
-	condition_pattern = re.compile(r'(.+?) ([0-9]+[.]?[0-9]*)([^0-9 ]+)')
 	drug_conditions = {}
-
 	for condition in results:
-		conditions = condition.split(' + ')
-		if len(conditions) == 1: # single drug
-			match = condition_pattern.match(conditions[0])
-			if not match:
-				raise analyze.UserError(_condition_error(condition))
-			drug, dose, unit = match.group(1, 2, 3)
-			util.put_multimap(drug_conditions, drug, (dose, unit))
-		else: # drug combo
-			match1 = condition_pattern.match(conditions[0])
-			if not match1:
-				raise analyze.UserError(_condition_error(condition))
-			match2 = condition_pattern.match(conditions[1])
-			if not match2:
-				raise analyze.UserError(_condition_error(condition))
-			drug1, dose1, unit1 = match1.group(1, 2, 3)
-			drug2, dose2, unit2 = match2.group(1, 2, 3)
-			util.put_multimap(drug_conditions, (drug1, drug2), ((dose1, dose2), (unit1, unit2)))
+		solution = util.Solution(condition)
+		util.put_multimap(drug_conditions, solution.get_drugs(), solution)
 	return drug_conditions
-
-def _string2float(string_or_iterable):
-	if isinstance(string_or_iterable, str):
-		string = string_or_iterable
-		return float(string)
-	else:
-		iterable = string_or_iterable
-		return tuple(float(string) for string in iterable)
 
 #
 # main

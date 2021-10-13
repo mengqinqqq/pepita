@@ -14,37 +14,11 @@ import util
 LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
 _neo_model = None
 
-class Ratio:
-	def __init__(self, num, denom):
-		self.num = num
-		self.denom = denom
-
-	def __mul__(self, other):
-		return round(other * self.num / self.denom, 5)
-
-	def __rmul__(self, other):
-		return round(other * self.num / self.denom, 5)
-
-	def __repr__(self):
-		return f'{self.num}/{self.denom}'
-
-	def __rsub__(self, other):
-		return Ratio(other*self.denom - self.num, self.denom)
-
-	def __sub__(self, other):
-		return Ratio(self.num - other*self.denom, self.denom)
-
 class Model:
 	def __init__(self, xs, ys, condition, E_0=100, E_max=None, debug=0):
-		if isinstance(condition, str): # single drug
-			self.combo = False
-			self.proportion_a = -1
-			self.xs = xs
-		else: # drug combo
-			self.combo = True
-			self.proportion_a = Ratio(xs[-1][0], xs[-1][0] + xs[-1][1])
-			self.xs = [a + b for a, b in xs]
+		self.combo = not isinstance(condition, str) and len(condition) > 1
 		self.condition = condition
+		self.xs = xs
 		self.ys = ys
 		self.E_0 = E_0
 		self.E_max = E_max
@@ -112,9 +86,9 @@ class Model:
 		return self.E_max if self.E_max is not None else self.c
 
 	def get_condition(self):
-		if isinstance(self.condition, str): # single drug
+		if isinstance(self.condition, str):
 			return self.condition
-		else: # drug combo
+		else:
 			return '+'.join(self.condition)
 
 	def get_condition_E_max(self):
@@ -123,15 +97,18 @@ class Model:
 	def get_ys(self, xs):
 		return self.equation(xs, self.b, self.c, self.e)
 
+	def __repr__(self):
+		return str(self.__dict__)
+
 def chart_pair(model_a, model_b, model_combo):
 	# data chart
 
 	data = pd.DataFrame({
 		'concentration': list(model_combo.xs) * 3,
 		'score': list(model_a.ys) + list(model_b.ys) + list(model_combo.ys),
-		'condition': [model_a.condition] * len(model_a.xs)
-			+ [model_b.condition] * len(model_b.xs)
-			+ ['+'.join(model_combo.condition)] * len(model_combo.xs)
+		'condition': [model_a.get_condition()] * len(model_a.xs)
+			+ [model_b.get_condition()] * len(model_b.xs)
+			+ [model_combo.get_condition()] * len(model_combo.xs)
 	})
 	data = data.pivot_table(
 		index='condition', columns='concentration', values='score', aggfunc=np.nanmean)
@@ -140,8 +117,8 @@ def chart_pair(model_a, model_b, model_combo):
 		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
 		linewidths=1, square=True)
 	unique_str = str(int(time() * 1000) % 1_620_000_000_000)
-	plt.title(f'{model_a.condition} vs. {model_b.condition}: Raw Data')
-	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_data_{unique_str}.png')
+	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Raw Data')
+	plt.savefig(f'{LOG_DIR}/combo_{model_a.get_condition()}-{model_b.get_condition()}_data_{unique_str}.png')
 	plt.clf()
 
 	# model chart
@@ -152,9 +129,9 @@ def chart_pair(model_a, model_b, model_combo):
 	data = pd.DataFrame({
 		'concentration': xs * 3,
 		'score': np.concatenate((model_a.get_ys(xs), model_b.get_ys(xs), model_combo.get_ys(xs))),
-		'condition': [model_a.condition] * len(xs)
-			+ [model_b.condition] * len(xs)
-			+ ['+'.join(model_combo.condition)] * len(xs)
+		'condition': [model_a.get_condition()] * len(xs)
+			+ [model_b.get_condition()] * len(xs)
+			+ [model_combo.get_condition()] * len(xs)
 	})
 	data = data.pivot_table(
 		index='condition', columns='concentration', values='score', aggfunc='median')
@@ -162,17 +139,16 @@ def chart_pair(model_a, model_b, model_combo):
 	sns.heatmap(data,
 		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
 		linewidths=1, square=True)
-	plt.title(f'{model_a.condition} vs. {model_b.condition}: Model')
-	plt.savefig(f'{LOG_DIR}/combo_{model_a.condition}-{model_b.condition}_model_{unique_str}.png')
+	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Model')
+	plt.savefig(f'{LOG_DIR}/combo_{model_a.get_condition()}-{model_b.get_condition()}_model_{unique_str}.png')
 	plt.clf()
 
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
+	combo_proportion_a = model_combo.xs[-1].ratio()
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
-		combo_proportion_a = 1 - model_combo.proportion_a
-	else:
-		combo_proportion_a = model_combo.proportion_a
+		combo_proportion_a = combo_proportion_a.reciprocal()
 
 	ec_b_alone = model_b.effective_concentration(pct_inhibition)
 	ec_combo = model_combo.effective_concentration(pct_inhibition)
@@ -221,7 +197,7 @@ def _get_neo_model():
 		with open(os.path.join(util.get_here(), 'examples/neo_data.csv'),
 				encoding='utf8', newline='') as f:
 			for x, y in csv.reader(f, delimiter='\t'):
-				xs.append(float(x))
+				xs.append(util.Solution(f'Neomycin {x}μM'))
 				ys.append(float(y))
 
 		_neo_model = Model(xs, ys, 'Neomycin', debug=1)
@@ -244,9 +220,10 @@ if __name__ == '__main__':
 	print(f'ec_75: {ec_75} μM')
 	print(f'ec_50: {ec_50} μM')
 
-	model_a = Model(model.xs, model.ys, 'Neo1')
-	model_b = Model(model.xs, model.ys, 'Neo2')
-	model_combo = Model([(x/2, x/2) for x in model.xs], model.ys, ('Neo1', 'Neo2'))
+	model_a = Model(model.xs, model.ys, ('Neo1'))
+	model_b = Model(model.xs, model.ys, ('Neo2'))
+	model_combo = Model(
+		[x.dilute(0.5).combine_doses(x.dilute(0.5)) for x in model.xs], model.ys, ('Neo1', 'Neo2'))
 
 	chart_pair(model_a, model_b, model_combo)
 	neo_neo_FIC_50 = get_combo_FIC(0.5, model_a, model_b, model_combo)
