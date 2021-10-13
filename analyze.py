@@ -125,7 +125,7 @@ def get_schematic(platefile, target_count, plate_ignore):
 
 	return [well for row in schematic for well in row]
 
-def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefile=None,
+def main(imagefiles, cap=-1, chartfile=None, debug=0, group_regex='.*', platefile=None,
 		plate_control=['B'], plate_ignore=[], silent=False):
 	results = {}
 
@@ -149,7 +149,7 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 
 	return results
 
-def quantify(imagefiles, plate_control=['B'], cap=150, debug=0, group_regex='.*', schematic=None):
+def quantify(imagefiles, plate_control=['B'], cap=-1, debug=0, group_regex='.*', schematic=None):
 	pattern = re.compile(group_regex)
 	images = [Image(filename, group, debug) for filename, group in zip(imagefiles, schematic)
 		if group in plate_control or pattern.search(group)]
@@ -209,13 +209,7 @@ def set_arguments(parser):
 		default=150,
 		type=int,
 		help=('Exclude well values larger than the given integer, expressed as a percentage of '
-			'the median control value. Defaults to 150 (i.e. values larger than 150%% of control '
-			'will be excluded.'))
-	parser.add_argument('-nc', '--no-cap',
-		action='store_const',
-		const=-1,
-		dest='cap',
-		help=('If present, well values will not be excluded just by virtue of being too large.'))
+			'the median control value.'))
 
 	parser.add_argument('-d', '--debug',
 		action='count',
