@@ -94,6 +94,9 @@ class Model:
 	def get_condition_E_max(self):
 		return self.c
 
+	def get_x_units(self):
+		return self.xs[-1].get_units()
+
 	def get_ys(self, xs):
 		return self.equation(xs, self.b, self.c, self.e)
 

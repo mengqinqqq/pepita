@@ -118,6 +118,9 @@ class Solution:
 	def get_drugs(self):
 		return tuple(dose.drug for dose in self.doses)
 
+	def get_units(self):
+		return '+'.join(str(dose.unit) for dose in self.doses)
+
 	def ratio(self):
 		if len(self.doses) == 2:
 			return Ratio(self.doses[0].quantity, self.doses[1].quantity)
