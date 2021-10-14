@@ -1,9 +1,9 @@
 import csv
-from scipy.optimize import curve_fit, OptimizeWarning
 import numpy as np
 import os.path
 import pandas as pd
 import matplotlib.pyplot as plt
+import scipy.optimize
 import seaborn as sns
 import sys
 from time import time
@@ -26,8 +26,8 @@ class Model:
 		self.equation = lambda xs, b, c, e: log_logistic_model(xs, b, c, E_0, e)
 		with warnings.catch_warnings():
 			warnings.simplefilter('ignore', RuntimeWarning)
-			warnings.simplefilter('ignore', OptimizeWarning)
-			popt, pcov = curve_fit(self.equation, self.xs, self.ys)
+			warnings.simplefilter('ignore', scipy.optimize.OptimizeWarning)
+			popt, pcov = scipy.optimize.curve_fit(self.equation, self.xs, self.ys)
 		self.b, self.c, self.e = popt
 
 		if debug > 0:
@@ -94,6 +94,30 @@ class Model:
 	def get_condition_E_max(self):
 		return self.c
 
+	def get_intersection(self, other, guess, ratio):
+		if not isinstance(other, Model):
+			return np.nan
+
+		f_intersection_equals_zero = lambda xs: np.array(
+			self.equation(xs, self.b, self.c, self.e) \
+				- other.equation(xs / ratio, other.b, other.c, other.e),
+			dtype=np.float64)
+
+		return scipy.optimize.fsolve(f_intersection_equals_zero, guess)
+
+	# pct_survival = (f(x) - min) / (max - min)
+	def get_pct_survival(self, xs=None, ys=None):
+		if not xs and not ys:
+			raise ValueError('One of xs or ys is required')
+
+		max_ = self.E_0
+		min_ = self.get_absolute_E_max()
+
+		if not ys:
+			ys = self.get_ys(xs)
+
+		return (ys - min_) / (max_ - min_)
+
 	def get_x_units(self):
 		return self.xs[-1].get_units()
 
@@ -104,6 +128,32 @@ class Model:
 		return str(self.__dict__)
 
 def chart_pair(model_a, model_b, model_combo):
+
+	#
+	combo_ratio = model_combo.xs[-1].ratio()
+	e_theor = util.extract_number(model_combo.xs[-1].get_drugs()[0]) / 100
+	ec_a = model_a.effective_concentration(e_theor)
+	print('concentration_predicted', ec_a)
+
+	intersection = model_a.get_intersection(model_b, ec_a, combo_ratio)
+	concentration_a = intersection[0]
+	concentration_b = intersection[0] / combo_ratio
+	score_a = model_a.get_ys(concentration_a)
+	score_b = model_b.get_ys(concentration_b)
+	print(f'intersection_a: ({concentration_a}, {score_a})', model_a.condition)
+	print(f'intersection_b: ({concentration_b}, {score_b})', model_b.condition)
+	e_exper = 1 - model_a.get_pct_survival(ys=score_a)
+	print(f'actual effect: {(e_exper * 100):.1f}% inhibition')
+
+	concentration_combo_theor = (concentration_a / 2) + (concentration_b / 2)
+	score_combo_theor = model_combo.get_ys(concentration_combo_theor)
+	print(f'theoretically equivalent combo: ({concentration_combo_theor}, {score_combo_theor})')
+
+	concentration_combo_exper = model_combo.effective_concentration(e_exper)
+	score_combo_exper = model_combo.get_ys(concentration_combo_exper)
+	print(f'equipotent combo: ({concentration_combo_exper}, {score_combo_exper})')
+	#
+
 	data = pd.DataFrame({
 		'concentration': list(model_combo.xs) * 3,
 		'score': np.concatenate((

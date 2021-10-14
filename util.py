@@ -79,6 +79,9 @@ class Ratio:
 	def __sub__(self, other):
 		return Ratio(self.num - other*self.denom, self.denom)
 
+	def __rtruediv__(self, other):
+		return other * self.reciprocal()
+
 	def reciprocal(self):
 		return Ratio(self.denom, self.num)
 
@@ -125,6 +128,9 @@ class Solution:
 		if len(self.doses) == 2:
 			return Ratio(self.doses[0].quantity, self.doses[1].quantity)
 		raise ValueError(f'This solution {self.doses} does not have a valid dose ratio')
+
+def extract_number(string):
+	return float(re.search(r'[0-9.]+', string).group(0))
 
 def get_config(setting, fallback=None):
 	global _config
