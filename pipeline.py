@@ -41,13 +41,16 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 			if not np.isnan(concentn):
 				print(f'{model.get_condition()}: EC_{ec_value}={concentn:.2f}{model.get_x_units()}')
 
-	model_combo = next(model for model in models.values() if model.combo)
-	model_a = models[(model_combo.condition[0],)]
-	model_b = models[(model_combo.condition[1],)]
-	dose_response.chart_pair(model_a, model_b, model_combo)
-	combo_FIC_50 = dose_response.get_combo_FIC(0.5, model_a, model_b, model_combo)
-	combo_FIC_75 = dose_response.get_combo_FIC(0.75, model_a, model_b, model_combo)
-	print(f'{model_combo.get_condition()}: FIC_50 {combo_FIC_50}, FIC_75 {combo_FIC_75}')
+	models_combo = [model for model in models.values() if model.combo]
+	for model_combo in models_combo:
+		if (model_combo.condition[0],) not in models:
+			continue
+		model_a = models[(model_combo.condition[0],)]
+		model_b = models[(model_combo.condition[1],)]
+		dose_response.chart_pair(model_a, model_b, model_combo)
+		combo_FIC_50 = dose_response.get_combo_FIC(0.5, model_a, model_b, model_combo)
+		combo_FIC_75 = dose_response.get_combo_FIC(0.75, model_a, model_b, model_combo)
+		print(f'{model_combo.get_condition()}: FIC_50 {combo_FIC_50}, FIC_75 {combo_FIC_75}')
 
 def _parse_results(results):
 	drug_conditions = {}
