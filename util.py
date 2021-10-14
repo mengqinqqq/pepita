@@ -39,12 +39,14 @@ class Dose:
 			self.series = ec_data
 		else:
 			vector_match = Dose._vector_pattern.match(string)
-			self.series = vector_match.group(1)
+			self.series = None
 			multiplier, divisor = None, None
 
 		if vector_match:
 			self.drug, self.quantity, self.unit = vector_match.group(1, 2, 3)
 			self.quantity = float(self.quantity)
+			if not self.series:
+				self.series = vector_match.group(1)
 		else:
 			raise ValueError(f'Dose string "{string}" is not in the proper format')
 
