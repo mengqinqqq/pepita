@@ -1,6 +1,9 @@
+import base64
 import configparser
 import csv
+import hashlib
 import os
+import pickle
 import re
 
 _config = None
@@ -145,6 +148,13 @@ def get_config(setting, fallback=None):
 def get_here():
 	script = sys.argv[0] if __name__ == '__main__' else __file__
 	return os.path.dirname(os.path.realpath(script))
+
+def get_inputs_hashfile(**kwargs):
+	sha1hash = hashlib.sha1()
+	for value in kwargs.values():
+		sha1hash.update(pickle.dumps(value))
+	digest = base64.b32encode(sha1hash.digest()).decode('utf-8')
+	return os.path.join(os.getcwd(), f'.{digest}.json')
 
 def put_multimap(dict_, key, value):
 	list_ = dict_.get(key, [])

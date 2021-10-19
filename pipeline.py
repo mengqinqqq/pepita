@@ -1,6 +1,8 @@
 import argparse
+import json
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import re
 import seaborn as sns
@@ -13,8 +15,17 @@ import util
 
 def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefile=None,
 		plate_control=['B'], plate_ignore=[], silent=False):
-	results = analyze.main(imagefiles, cap, chartfile, debug, group_regex, platefile,
-		plate_control, plate_ignore, True)
+	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
+		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
+
+	if chartfile is None and debug == 0 and os.path.exists(hashfile):
+		with open(hashfile, 'r') as f: # read cached results
+			results = json.load(f)
+	else:
+		results = analyze.main(imagefiles, cap, chartfile, debug, group_regex, platefile,
+			plate_control, plate_ignore, True)
+		with open(hashfile, 'w') as f: # cache results for reuse
+			json.dump(results, f, ensure_ascii=False)
 
 	drug_conditions = _parse_results(results)
 	control_drugs = [(util.Dose(control).drug,) for control in plate_control]
