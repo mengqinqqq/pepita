@@ -105,6 +105,9 @@ class Model:
 				- other.equation(xs / ratio, other.b, other.c, other.e),
 			dtype=np.float64)
 
+		plot_func(self.xs, f_intersection_equals_zero, f'{self.cocktail} - {other.cocktail}',
+			f'a_b_intersection@{ratio}', f'{self.cocktail} ({self.get_x_units()})')
+
 		return scipy.optimize.fsolve(f_intersection_equals_zero, guess)
 
 	# pct_survival = (f(x) - min) / (max - min)
@@ -164,6 +167,20 @@ def analyze_pair(model_a, model_b, model_combo):
 			f'({concentration_combo_simpl_a}{model_a.get_x_units()} {model_a.cocktail} + '
 			f'{concentration_combo_simpl_b}{model_b.get_x_units()} {model_b.cocktail}, '
 			f'{score_combo_simpl})'
+		))
+
+		concentration_combo_theor = get_combo_additive_expectation(
+			e_experimental, model_a, model_b, model_combo)
+		score_combo_theor = model_combo.get_ys(concentration_combo_theor)
+		concentration_combo_theor_a = concentration_combo_theor * \
+			model_combo.cocktail.ratio.to_proportion()
+		concentration_combo_theor_b = concentration_combo_theor * \
+			model_combo.cocktail.ratio.reciprocal().to_proportion()
+		print((
+			f'Theoretically equivalent combo: '
+			f'({concentration_combo_theor_a}{model_a.get_x_units()} {model_a.cocktail} + '
+			f'{concentration_combo_theor_b}{model_b.get_x_units()} {model_b.cocktail}, '
+			f'{score_combo_theor})'
 		))
 
 		concentration_combo_exper = model_combo.effective_concentration(e_experimental)
@@ -227,6 +244,13 @@ def chart_pair(model_a, model_b, model_combo):
 # B_i = amount of B alone required to reach relevant effect level
 # p = Hill function coefficient for B's dose-response curve
 # q = Hill function coefficient for A's dose-response curve
+# returns b_i
+def do_additive_isobole(a_i, A_E50_a, B_E50_b, E_max_a, E_max_b, B_i, p, q):
+	return B_i - B_E50_b/((E_max_b/E_max_a)*(1 + A_E50_a**q/a_i**q) - 1)**(1/p)
+
+# derived from Grabovsky and Tallarida 2004, http://doi.org/10.1124/jpet.104.067264, Eq. 3
+# for details see above
+# returns the FIC score
 def do_FIC(a_i, b_i, A_E50_a, B_E50_b, E_max_a, E_max_b, B_i, p, q):
 	return (b_i + B_E50_b/((E_max_b/E_max_a)*(1 + A_E50_a**q/a_i**q) - 1)**(1/p)) / B_i
 
@@ -248,6 +272,46 @@ def filter_valid(array, minimum=None, tolerance=None):
 			del array[removable_idx]
 
 	return array
+
+def get_combo_additive_expectation(pct_inhibition, model_a, model_b, model_combo, plot=True):
+	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
+	combo_ratio_a = model_combo.cocktail.ratio
+	if model_a.c < model_b.c:
+		model_a, model_b = model_b, model_a
+		combo_ratio_a = combo_ratio_a.reciprocal()
+
+	ec_a_alone = model_a.effective_concentration(pct_inhibition)
+	ec_b_alone = model_b.effective_concentration(pct_inhibition)
+
+	if np.isnan(ec_b_alone):
+		return np.nan
+
+	inhibition_max_a = 1 - model_a.get_pct_survival(ys=model_a.c)
+	inhibition_max_b = 1 - model_a.get_pct_survival(ys=model_b.c)
+
+	# find intersection between dose ratio and additive isobole
+	f_isobole = lambda ec_combo_a: do_additive_isobole(
+		ec_combo_a, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b, ec_b_alone, model_b.b,
+		model_a.b)
+	f_diagonal = lambda ec_combo_a: ec_combo_a / combo_ratio_a
+	simplistic_additive_estimate = 1 if np.isnan(ec_a_alone) else ec_a_alone / 2
+
+	if plot:
+		plot_func(model_a.xs, f_isobole, f'{model_combo.cocktail} Additive Isobole',
+			f'{model_combo.cocktail}_isobole', f'{model_a.cocktail} ({model_a.get_x_units()})',
+			close=False, color='tab:blue',
+			max_x=(ec_a_alone if not np.isnan(ec_a_alone) else model_a.effective_concentration(model_a.c + 1)),
+			min_y=0)
+		plot_func(model_a.xs, f_diagonal, f'{model_combo.cocktail} Ratio', None, close=False,
+			color='tab:green',
+			max_x=(ec_a_alone if not np.isnan(ec_a_alone) else model_a.effective_concentration(model_a.c + 1)))
+		plot_func(model_a.xs, lambda xs: ec_b_alone*(1 - xs/ec_a_alone),
+			f'Line of simplistic additivity', f'{model_combo.cocktail}_isobole', color='lightgrey',
+			linestyle='dashed', min_y=0)
+
+	conc_b = get_intersection(f_isobole, f_diagonal, simplistic_additive_estimate)[0]
+	conc_a = conc_b * combo_ratio_a
+	return conc_a + conc_b
 
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
@@ -291,6 +355,32 @@ def log_logistic_model(xs, b, c, d, e):
 def neo_E_max():
 	neo_model = _get_neo_model()
 	return _neo_model.get_condition_E_max()
+
+def plot_func(xs, func, label, filename_prefix, x_label=None, close=True, color='darkgrey',
+		linestyle='solid', max_x=None, max_y=None, min_x=None, min_y=None):
+	if x_label:
+		plt.xlabel(x_label)
+	line_xs = np.linspace(0, float(max(xs)), 100)
+	if max_x is not None:
+		line_xs = line_xs[line_xs <= max_x]
+	if min_x is not None:
+		line_xs = line_xs[line_xs >= min_x]
+	with warnings.catch_warnings():
+		warnings.simplefilter('ignore', RuntimeWarning)
+		line_ys = func(line_xs)
+	if max_y is not None:
+		line_xs = line_xs[line_ys <= max_y]
+		line_ys = line_ys[line_ys <= max_y]
+	if min_y is not None:
+		line_xs = line_xs[line_ys >= min_y]
+		line_ys = line_ys[line_ys >= min_y]
+	plt.plot(line_xs, line_ys, color=color, label=label, marker=None)
+	plt.legend()
+	if close:
+		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+		plt.savefig(os.path.join(LOG_DIR, f'{filename_prefix}_{uniq_str}.png'))
+		plt.close()
+		plt.clf()
 
 def _get_neo_model():
 	global _neo_model
