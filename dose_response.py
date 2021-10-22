@@ -81,7 +81,7 @@ class Model:
 
 		pct_pts_above_E_max = pct_survival * (max_ - min_) + min_ - c
 
-		if pct_pts_above_E_max < 1:
+		if pct_pts_above_E_max <= 0:
 			print(f'WARN: {self.get_condition()} EC_{int(pct_inhibition*100)} is unreachable')
 			return np.nan
 
@@ -100,15 +100,21 @@ class Model:
 		if not isinstance(other, Model):
 			return np.nan
 
+		other_adj = Model(np.array(other.xs) * ratio, other.ys, other.cocktail, other.E_0,
+			other.E_max)
+
 		f_intersection_equals_zero = lambda xs: np.array(
 			self.equation(xs, self.b, self.c, self.e) \
-				- other.equation(xs / ratio, other.b, other.c, other.e),
+				- other_adj.equation(xs, other_adj.b, other_adj.c, other_adj.e),
 			dtype=np.float64)
 
-		plot_func(self.xs, f_intersection_equals_zero, f'{self.cocktail} - {other.cocktail}',
+		plot_func(self.xs, f_intersection_equals_zero, f'{self.cocktail} - {other_adj.cocktail}',
 			f'a_b_intersection@{ratio}', f'{self.cocktail} ({self.get_x_units()})')
 
-		return scipy.optimize.fsolve(f_intersection_equals_zero, guess)
+		return get_intersection(
+			lambda xs: self.equation(xs, self.b, self.c, self.e),
+			lambda xs: other_adj.equation(xs, other_adj.b, other_adj.c, other_adj.e),
+			guess)
 
 	# pct_survival = (f(x) - min) / (max - min)
 	def get_pct_survival(self, xs=None, ys=None):
@@ -315,10 +321,10 @@ def get_combo_additive_expectation(pct_inhibition, model_a, model_b, model_combo
 
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
-	combo_proportion_a = model_combo.cocktail.ratio
+	combo_ratio_a = model_combo.cocktail.ratio
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
-		combo_proportion_a = combo_proportion_a.reciprocal()
+		combo_ratio_a = combo_ratio_a.reciprocal()
 
 	ec_b_alone = model_b.effective_concentration(pct_inhibition)
 	ec_combo = model_combo.effective_concentration(pct_inhibition)
@@ -326,10 +332,10 @@ def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 	if np.isnan(ec_b_alone) or np.isnan(ec_combo):
 		return np.nan
 
-	ec_combo_a = ec_combo * combo_proportion_a
-	ec_combo_b = ec_combo * (1 - combo_proportion_a)
-	inhibition_max_a = model_a.E_0 - model_a.c
-	inhibition_max_b = model_b.E_0 - model_b.c
+	ec_combo_a = ec_combo * combo_ratio_a.to_proportion()
+	ec_combo_b = ec_combo * combo_ratio_a.reciprocal().to_proportion()
+	inhibition_max_a = 1 - model_a.get_pct_survival(ys=model_a.c)
+	inhibition_max_b = 1 - model_a.get_pct_survival(ys=model_b.c)
 
 	return do_FIC(ec_combo_a, ec_combo_b, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b,
 		ec_b_alone, model_b.b, model_a.b)
