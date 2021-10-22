@@ -114,7 +114,7 @@ class Ratio:
 		return round(other * self.num / self.denom, 8)
 
 	def __repr__(self):
-		return f'{self.num}/{self.denom}'
+		return f'{self.num}:{self.denom}'
 
 	def __rsub__(self, other):
 		return Ratio(other*self.denom - self.num, self.denom)
