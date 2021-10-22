@@ -129,32 +129,60 @@ class Model:
 	def __repr__(self):
 		return str(self.__dict__)
 
-def chart_pair(model_a, model_b, model_combo):
-
-	#
-	combo_ratio = model_combo.xs[-1].ratio()
+def analyze_pair(model_a, model_b, model_combo):
+	# print significant statistics
 	ec_a = model_a.effective_concentration(model_combo.cocktail.effect / 100)
-	print('concentration_predicted', ec_a)
+	print(f'Conc. of {model_a.cocktail} predicted to reach E{model_combo.cocktail.effect}: {ec_a}')
 
-	intersection = model_a.get_intersection(model_b, ec_a, combo_ratio)
-	concentration_a = intersection[0]
-	concentration_b = intersection[0] / model_combo.cocktail.ratio
-	score_a = model_a.get_ys(concentration_a)
-	score_b = model_b.get_ys(concentration_b)
-	print(f'intersection_a: ({concentration_a}, {score_a})', model_a.cocktail)
-	print(f'intersection_b: ({concentration_b}, {score_b})', model_b.cocktail)
-	e_exper = 1 - model_a.get_pct_survival(ys=score_a)
-	print(f'actual effect: {(e_exper * 100):.1f}% inhibition')
+	intersections = model_a.get_intersection(model_b, [ec_a/8, ec_a/4, ec_a/2, ec_a, ec_a*2],
+		model_combo.cocktail.ratio)
+	intersections = filter_valid(intersections, minimum=1, tolerance=1)
+	for intersection in intersections:
+		concentration_a = intersection
+		concentration_b = intersection / model_combo.cocktail.ratio
+		score_a = model_a.get_ys(concentration_a)
+		score_b = model_b.get_ys(concentration_b)
+		print((
+			f'Intersection point for {model_a.cocktail}: '
+			f'({concentration_a}{model_a.get_x_units()}, {score_a})'
+		))
+		print((
+			f'Intersection point for {model_b.cocktail}: '
+			f'({concentration_b}{model_b.get_x_units()}, {score_b})'
+		))
+		e_experimental = 1 - model_a.get_pct_survival(ys=score_a)
+		print(f'Actual effect: {(e_experimental * 100):.1f}% inhibition')
 
-	concentration_combo_theor = (concentration_a / 2) + (concentration_b / 2)
-	score_combo_theor = model_combo.get_ys(concentration_combo_theor)
-	print(f'theoretically equivalent combo: ({concentration_combo_theor}, {score_combo_theor})')
+		concentration_combo_simpl = (concentration_a / 2) + (concentration_b / 2)
+		score_combo_simpl = model_combo.get_ys(concentration_combo_simpl)
+		concentration_combo_simpl_a = concentration_combo_simpl * \
+			model_combo.cocktail.ratio.to_proportion()
+		concentration_combo_simpl_b = concentration_combo_simpl * \
+			model_combo.cocktail.ratio.reciprocal().to_proportion()
+		print((
+			f'Simplistically equivalent combo: '
+			f'({concentration_combo_simpl_a}{model_a.get_x_units()} {model_a.cocktail} + '
+			f'{concentration_combo_simpl_b}{model_b.get_x_units()} {model_b.cocktail}, '
+			f'{score_combo_simpl})'
+		))
 
-	concentration_combo_exper = model_combo.effective_concentration(e_exper)
-	score_combo_exper = model_combo.get_ys(concentration_combo_exper)
-	print(f'equipotent combo: ({concentration_combo_exper}, {score_combo_exper})')
-	#
+		concentration_combo_exper = model_combo.effective_concentration(e_experimental)
+		score_combo_exper = model_combo.get_ys(concentration_combo_exper)
+		concentration_combo_exper_a = concentration_combo_exper * \
+			model_combo.cocktail.ratio.to_proportion()
+		concentration_combo_exper_b = concentration_combo_exper * \
+			model_combo.cocktail.ratio.reciprocal().to_proportion()
+		print((
+			f'Equipotent combo: '
+			f'({concentration_combo_exper_a}{model_a.get_x_units()} {model_a.cocktail} + '
+			f'{concentration_combo_exper_b}{model_b.get_x_units()} {model_b.cocktail}, '
+			f'{score_combo_exper})'
+		))
 
+		fic = get_combo_FIC(e_experimental, model_a, model_b, model_combo)
+		print(f'{model_combo.cocktail} FIC_{(e_experimental * 100):.0f}={fic:.2f}')
+
+def chart_pair(model_a, model_b, model_combo):
 	# chart A and B on the same axes, with the same x values
 
 	model_b_scaled = Model(np.array(model_b.xs) * model_combo.cocktail.ratio, model_b.ys,
@@ -202,6 +230,25 @@ def chart_pair(model_a, model_b, model_combo):
 def do_FIC(a_i, b_i, A_E50_a, B_E50_b, E_max_a, E_max_b, B_i, p, q):
 	return (b_i + B_E50_b/((E_max_b/E_max_a)*(1 + A_E50_a**q/a_i**q) - 1)**(1/p)) / B_i
 
+def filter_valid(array, minimum=None, tolerance=None):
+	if minimum is not None:
+		array = [element for element in array if element >= minimum]
+
+	if tolerance is not None:
+		blacklist = []
+		for i, element in enumerate(array):
+			if i not in blacklist:
+				for j, element_j in enumerate(array):
+					if i != j and j not in blacklist and \
+							util.equalsish(element, element_j, delta=tolerance):
+						blacklist.append(j)
+		blacklist.sort(reverse=True)
+		blacklist = dict.fromkeys(blacklist)
+		for removable_idx in blacklist:
+			del array[removable_idx]
+
+	return array
+
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
 	combo_proportion_a = model_combo.cocktail.ratio
@@ -222,6 +269,17 @@ def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 
 	return do_FIC(ec_combo_a, ec_combo_b, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b,
 		ec_b_alone, model_b.b, model_a.b)
+
+def get_intersection(f1, f2, guess):
+	f_intersection_equals_zero = \
+		lambda xs: np.array(f1(xs), dtype=np.float64) - np.array(f2(xs), dtype=np.float64)
+
+	try:
+		with warnings.catch_warnings():
+			warnings.simplefilter('ignore', RuntimeWarning)
+			return scipy.optimize.root(f_intersection_equals_zero, guess, method='lm').x
+	except scipy.optimize.nonlin.NoConvergence as e:
+		return e.args[0]
 
 # Ritz 2009, https://doi.org/10.1002/etc.7, Eq. 2
 # `xs` is a numpy array of x values; b, c, d, and e are model parameters:
@@ -272,6 +330,4 @@ if __name__ == '__main__':
 		util.Cocktail(('Neo1', 'Neo2'), effect=50, ratio=util.Ratio(1, 1)))
 
 	chart_pair(model_a, model_b, model_combo)
-	neo_neo_FIC_50 = get_combo_FIC(0.5, model_a, model_b, model_combo)
-	neo_neo_FIC_90 = get_combo_FIC(0.9, model_a, model_b, model_combo)
-	print(f'Neomycin self-combo FIC_50={neo_neo_FIC_50}, FIC_90={neo_neo_FIC_90}')
+	analyze_pair(model_a, model_b, model_combo)

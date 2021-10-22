@@ -56,6 +56,7 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 		subcocktail_b = util.Cocktail(model_combo.cocktail.drugs[1])
 		model_a = models[subcocktail_a]
 		model_b = models[subcocktail_b]
+		dose_response.analyze_pair(model_a, model_b, model_combo)
 		dose_response.chart_pair(model_a, model_b, model_combo)
 		combo_FIC_50 = dose_response.get_combo_FIC(0.5, model_a, model_b, model_combo)
 		combo_FIC_75 = dose_response.get_combo_FIC(0.75, model_a, model_b, model_combo)

@@ -128,6 +128,9 @@ class Ratio:
 	def reciprocal(self):
 		return Ratio(self.denom, self.num)
 
+	def to_proportion(self):
+		return Ratio(self.num, self.num + self.denom)
+
 class Solution:
 	def __init__(self, string):
 		self.string = string
@@ -186,6 +189,9 @@ class Solution:
 		if len(self.doses) == 2:
 			return Ratio(self.doses[0].quantity, self.doses[1].quantity)
 		raise ValueError(f'This solution {self.doses} does not have a valid dose ratio')
+
+def equalsish(val1, val2, delta=0.001):
+	return abs(val1 - val2) < delta
 
 def extract_number(string):
 	number_match = re.search(r'[0-9.]+', string)
