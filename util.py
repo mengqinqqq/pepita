@@ -2,6 +2,7 @@ import base64
 import configparser
 import csv
 import hashlib
+import numpy as np
 import os
 import pickle
 import re
@@ -168,6 +169,12 @@ class Solution:
 			raise ValueError('Solution should be diluted by a factor between 0 and 1')
 		doses = [dose * dilution for dose in self.doses]
 		return Solution(' + '.join([dose.string for dose in doses]))
+
+	def get_cocktail(self):
+		effect = extract_number(self.doses[0].series)
+		return Cocktail(
+			tuple(dose.drug for dose in self.doses), effect=(None if np.isnan(effect) else effect),
+			ratio=(None if len(self.doses) != 2 else self.ratio()))
 
 	def get_drugs(self):
 		return tuple(dose.drug for dose in self.doses)

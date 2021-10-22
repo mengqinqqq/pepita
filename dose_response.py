@@ -36,15 +36,15 @@ class Model:
 	def __repr__(self):
 		return "{}({})".format(self.__class__.__name__, self.cocktail)
 
-	def chart(self):
+	def chart(self, close=True, color='darkgrey', label=True, name=None):
 		plt.scatter(self.xs, self.ys, color='black', label='Data', marker='.')
-		plt.xlabel(f'{self.get_condition()} Dose (μM)')
-		plt.ylabel('Pipeline Score')
+		if label:
+			plt.xlabel(f'{self.get_condition()} Dose (μM)')
+			plt.ylabel('Pipeline Score')
 
-		max_x = max(self.xs)
-		line_xs = np.linspace(0, max_x, 100)
+		line_xs = np.linspace(0, float(max(self.xs)), 100)
 		line_ys = self.get_ys(line_xs)
-		plt.plot(line_xs, line_ys, color='darkgrey', label='Model')
+		plt.plot(line_xs, line_ys, color=color, label='Model')
 		plt.plot(line_xs, np.ones_like(line_xs) * self.E_0, color='lightgrey', label='E_0')
 		plt.plot(line_xs, np.ones_like(line_xs) * self.get_condition_E_max(),
 			color='lightgrey', label='E_max')
@@ -53,11 +53,16 @@ class Model:
 		ec_50 = self.effective_concentration(0.5)
 		plt.scatter(ec_50, self.get_ys(ec_50), color='black', label='EC_50', marker='+')
 
-		plt.legend()
-		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
-		plt.savefig(f'{LOG_DIR}/{self.get_condition()}_{uniq_str}.png')
-		plt.close()
-		plt.clf()
+		if label:
+			plt.legend()
+
+		if close:
+			uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+			if not name:
+				name = self.get_condition()
+			plt.savefig(os.path.join(LOG_DIR, f'{name}_{uniq_str}.png'))
+			plt.close()
+			plt.clf()
 
 	# pct_survival = (f(x) - min) / (max - min)
 	# f(x) = c + (d - c) / (1 + (x / e)**b)
