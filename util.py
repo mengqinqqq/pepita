@@ -14,9 +14,11 @@ class Dose:
 	_vector_pattern = re.compile(r'(.+?) ([0-9]+[.]?[0-9]*) ?([^0-9]+)')
 
 	def __add__(self, other):
-		return Dose(self.string.replace(str(self.quantity), str(self.quantity + other)))
+		return Dose(f'{self.drug} {self.quantity + float(other)}{self.unit}')
 
 	def __eq__(self, other):
+		if not isinstance(other, Dose):
+			return False
 		return self.drug == other.drug and self.quantity == other.quantity and \
 			self.unit == other.unit
 
@@ -58,22 +60,37 @@ class Dose:
 		if divisor:
 			self.quantity /= int(divisor)
 
+	def __mul__(self, other):
+		return Dose(f'{self.drug} {self.quantity * other}{self.unit}')
+
 	def __radd__(self, other):
-		return Dose(self.string.replace(str(self.quantity), str(self.quantity + other)))
+		return Dose(f'{self.drug} {float(other) + self.quantity}{self.unit}')
 
 	def __repr__(self):
 		return f'{self.drug} {self.quantity}{self.unit}'
 
 class Ratio:
+	def __eq__(self, other):
+		if isinstance(other, Ratio):
+			return (self.num * other.denom) == (other.num * self.denom)
+		else:
+			return float(self) == float(other)
+
+	def __float__(self):
+		return self.num / self.denom
+
+	def __hash__(self):
+		return hash(round(self.num / self.denom, 8))
+
 	def __init__(self, num, denom):
 		self.num = num
 		self.denom = denom
 
 	def __mul__(self, other):
-		return round(other * self.num / self.denom, 5)
+		return round(other * self.num / self.denom, 8)
 
 	def __rmul__(self, other):
-		return round(other * self.num / self.denom, 5)
+		return round(other * self.num / self.denom, 8)
 
 	def __repr__(self):
 		return f'{self.num}/{self.denom}'
@@ -111,16 +128,25 @@ class Solution:
 		return hash(self.string)
 
 	def __mul__(self, other):
-		return float(self) * float(other)
+		doses = [dose * other for dose in self.doses]
+		return Solution(' + '.join([dose.string for dose in doses]))
 
 	def __repr__(self):
 		return '+'.join(str(dose.quantity) for dose in self.doses)
+
+	def __rmul__(self, other):
+		return other * float(self)
+
+	def __truediv__(self, other):
+		return float(self) / other
 
 	def combine_doses(self, other):
 		return Solution(f'{self.string} + {other.string}')
 
 	def dilute(self, dilution):
-		doses = [dose + (-dose.quantity/2) for dose in self.doses]
+		if dilution < 0 or dilution > 1:
+			raise ValueError('Solution should be diluted by a factor between 0 and 1')
+		doses = [dose * dilution for dose in self.doses]
 		return Solution(' + '.join([dose.string for dose in doses]))
 
 	def get_drugs(self):
@@ -135,7 +161,11 @@ class Solution:
 		raise ValueError(f'This solution {self.doses} does not have a valid dose ratio')
 
 def extract_number(string):
-	return float(re.search(r'[0-9.]+', string).group(0))
+	number_match = re.search(r'[0-9.]+', string)
+	if number_match:
+		return float(number_match.group(0))
+	else:
+		return np.nan
 
 def get_config(setting, fallback=None):
 	global _config
