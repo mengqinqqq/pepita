@@ -116,12 +116,6 @@ class Ratio:
 	def __repr__(self):
 		return f'{self.num}:{self.denom}'
 
-	def __rsub__(self, other):
-		return Ratio(other*self.denom - self.num, self.denom)
-
-	def __sub__(self, other):
-		return Ratio(self.num - other*self.denom, self.denom)
-
 	def __rtruediv__(self, other):
 		return other * self.reciprocal()
 

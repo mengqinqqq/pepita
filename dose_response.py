@@ -388,7 +388,7 @@ def plot_func(xs, func, label, filename_prefix, x_label=None, close=True, color=
 		plt.close()
 		plt.clf()
 
-def _get_neo_model():
+def _get_neo_model(debug=1):
 	global _neo_model
 	if _neo_model == None:
 		xs, ys = [], []
@@ -399,7 +399,7 @@ def _get_neo_model():
 				xs.append(util.Solution(f'Neomycin {x}μM'))
 				ys.append(float(y))
 
-		_neo_model = Model(xs, ys, util.Cocktail('Neomycin'), debug=1)
+		_neo_model = Model(xs, ys, util.Cocktail('Neomycin'), debug=debug)
 
 	return _neo_model
 
