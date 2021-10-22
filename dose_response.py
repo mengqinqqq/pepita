@@ -419,11 +419,11 @@ if __name__ == '__main__':
 	print(f'ec_75: {ec_75} μM')
 	print(f'ec_50: {ec_50} μM')
 
-	model_a = Model(model.xs, model.ys, util.Cocktail('Neo1'))
-	model_b = Model(model.xs, model.ys, util.Cocktail('Neo2'))
+	model_a = Model(np.multiply(model.xs, 2), model.ys, util.Cocktail('Neo_weak'))
+	model_b = Model(model.xs, model.ys, util.Cocktail('Neo_strong'))
 	model_combo = Model(
 		[x.dilute(0.5).combine_doses(x.dilute(0.5)) for x in model.xs], model.ys,
-		util.Cocktail(('Neo1', 'Neo2'), effect=50, ratio=util.Ratio(1, 1)))
+		util.Cocktail(('Neo_weak', 'Neo_strong'), effect=50, ratio=util.Ratio(2, 1)))
 
 	chart_pair(model_a, model_b, model_combo)
 	analyze_pair(model_a, model_b, model_combo)
