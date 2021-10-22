@@ -24,10 +24,10 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 			json.dump(results, f, ensure_ascii=False)
 
 	drug_conditions = _parse_results(results)
-	control_drugs = [(util.Dose(control).drug,) for control in plate_control]
+	control_drugs = [util.Cocktail(util.Dose(control).drug) for control in plate_control]
 	models = {}
 
-	for drug, conditions in drug_conditions.items():
+	for cocktail, conditions in drug_conditions.items():
 		if len(conditions) < 3: # can't create a proper model with less than 3 datapoints
 			continue
 		scores = []
@@ -39,8 +39,8 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 				warnings.simplefilter('ignore', RuntimeWarning)
 				summary_score = np.nanmedian(results[solution.string])
 				scores.append(summary_score)
-		models[drug] = dose_response.Model(
-			conditions, scores, drug, E_max=dose_response.neo_E_max(), debug=1)
+		models[cocktail] = dose_response.Model(
+			conditions, scores, cocktail, E_max=dose_response.neo_E_max(), debug=1)
 
 	for model in models.values():
 		for ec_value in (10, 25, 50, 75, 90):
@@ -50,10 +50,12 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 
 	models_combo = [model for model in models.values() if model.combo]
 	for model_combo in models_combo:
-		if (model_combo.condition[0],) not in models:
+		subcocktail_a = util.Cocktail(model_combo.cocktail.drugs[0])
+		if subcocktail_a not in models:
 			continue
-		model_a = models[(model_combo.condition[0],)]
-		model_b = models[(model_combo.condition[1],)]
+		subcocktail_b = util.Cocktail(model_combo.cocktail.drugs[1])
+		model_a = models[subcocktail_a]
+		model_b = models[subcocktail_b]
 		dose_response.chart_pair(model_a, model_b, model_combo)
 		combo_FIC_50 = dose_response.get_combo_FIC(0.5, model_a, model_b, model_combo)
 		combo_FIC_75 = dose_response.get_combo_FIC(0.75, model_a, model_b, model_combo)
@@ -63,7 +65,7 @@ def _parse_results(results):
 	drug_conditions = {}
 	for condition in results:
 		solution = util.Solution(condition)
-		util.put_multimap(drug_conditions, solution.get_drugs(), solution)
+		util.put_multimap(drug_conditions, solution.get_cocktail(), solution)
 	return drug_conditions
 
 #

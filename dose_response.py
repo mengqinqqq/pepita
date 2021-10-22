@@ -15,9 +15,9 @@ LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
 _neo_model = None
 
 class Model:
-	def __init__(self, xs, ys, condition, E_0=100, E_max=None, debug=0):
-		self.combo = not isinstance(condition, str) and len(condition) > 1
-		self.condition = condition
+	def __init__(self, xs, ys, cocktail, E_0=100, E_max=None, debug=0):
+		self.cocktail = cocktail
+		self.combo = len(cocktail.drugs) > 1
 		self.xs = xs
 		self.ys = ys
 		self.E_0 = E_0
@@ -34,7 +34,7 @@ class Model:
 			self.chart()
 
 	def __repr__(self):
-		return "{}({})".format(self.__class__.__name__, self.condition)
+		return "{}({})".format(self.__class__.__name__, self.cocktail)
 
 	def chart(self):
 		plt.scatter(self.xs, self.ys, color='black', label='Data', marker='.')
@@ -86,10 +86,7 @@ class Model:
 		return self.E_max if self.E_max is not None else self.c
 
 	def get_condition(self):
-		if isinstance(self.condition, str):
-			return self.condition
-		else:
-			return '+'.join(self.condition)
+		return str(self.cocktail)
 
 	def get_condition_E_max(self):
 		return self.c
@@ -131,17 +128,16 @@ def chart_pair(model_a, model_b, model_combo):
 
 	#
 	combo_ratio = model_combo.xs[-1].ratio()
-	e_theor = util.extract_number(model_combo.xs[-1].get_drugs()[0]) / 100
-	ec_a = model_a.effective_concentration(e_theor)
+	ec_a = model_a.effective_concentration(model_combo.cocktail.effect / 100)
 	print('concentration_predicted', ec_a)
 
 	intersection = model_a.get_intersection(model_b, ec_a, combo_ratio)
 	concentration_a = intersection[0]
-	concentration_b = intersection[0] / combo_ratio
+	concentration_b = intersection[0] / model_combo.cocktail.ratio
 	score_a = model_a.get_ys(concentration_a)
 	score_b = model_b.get_ys(concentration_b)
-	print(f'intersection_a: ({concentration_a}, {score_a})', model_a.condition)
-	print(f'intersection_b: ({concentration_b}, {score_b})', model_b.condition)
+	print(f'intersection_a: ({concentration_a}, {score_a})', model_a.cocktail)
+	print(f'intersection_b: ({concentration_b}, {score_b})', model_b.cocktail)
 	e_exper = 1 - model_a.get_pct_survival(ys=score_a)
 	print(f'actual effect: {(e_exper * 100):.1f}% inhibition')
 
@@ -157,9 +153,9 @@ def chart_pair(model_a, model_b, model_combo):
 	data = pd.DataFrame({
 		'concentration': list(model_combo.xs) * 3,
 		'score': np.concatenate((
-			model_a.get_ys(np.array([float(x) for x in model_a.xs])),
-			model_b.get_ys(np.array([float(x) for x in model_b.xs])),
-			model_combo.get_ys(np.array([float(x) for x in model_combo.xs]))
+			model_a.get_ys(model_a.xs),
+			model_b.get_ys(model_b.xs),
+			model_combo.get_ys(model_combo.xs)
 		)),
 		'condition': [model_a.get_condition()] * len(model_a.xs)
 			+ [model_b.get_condition()] * len(model_b.xs)
@@ -193,7 +189,7 @@ def do_FIC(a_i, b_i, A_E50_a, B_E50_b, E_max_a, E_max_b, B_i, p, q):
 
 def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
-	combo_proportion_a = model_combo.xs[-1].ratio()
+	combo_proportion_a = model_combo.cocktail.ratio
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
 		combo_proportion_a = combo_proportion_a.reciprocal()
@@ -234,7 +230,7 @@ def _get_neo_model():
 				xs.append(util.Solution(f'Neomycin {x}μM'))
 				ys.append(float(y))
 
-		_neo_model = Model(xs, ys, 'Neomycin', debug=1)
+		_neo_model = Model(xs, ys, util.Cocktail('Neomycin'), debug=1)
 
 	return _neo_model
 
@@ -254,10 +250,11 @@ if __name__ == '__main__':
 	print(f'ec_75: {ec_75} μM')
 	print(f'ec_50: {ec_50} μM')
 
-	model_a = Model(model.xs, model.ys, ('Neo1'))
-	model_b = Model(model.xs, model.ys, ('Neo2'))
+	model_a = Model(model.xs, model.ys, util.Cocktail('Neo1'))
+	model_b = Model(model.xs, model.ys, util.Cocktail('Neo2'))
 	model_combo = Model(
-		[x.dilute(0.5).combine_doses(x.dilute(0.5)) for x in model.xs], model.ys, ('Neo1', 'Neo2'))
+		[x.dilute(0.5).combine_doses(x.dilute(0.5)) for x in model.xs], model.ys,
+		util.Cocktail(('Neo1', 'Neo2'), effect=50, ratio=util.Ratio(1, 1)))
 
 	chart_pair(model_a, model_b, model_combo)
 	neo_neo_FIC_50 = get_combo_FIC(0.5, model_a, model_b, model_combo)

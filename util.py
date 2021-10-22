@@ -9,6 +9,26 @@ import re
 _config = None
 _section = 'Main'
 
+class Cocktail:
+	def __eq__(self, other):
+		return self.drugs == other.drugs and self.ratio == other.ratio
+
+	def __hash__(self):
+		return hash(self.drugs) ^ hash(self.ratio)
+
+	def __init__(self, drugs, effect=None, ratio=None):
+		self.drugs = drugs if not isinstance(drugs, str) else (drugs,)
+		self.effect = effect
+		self.ratio = ratio
+
+	def __repr__(self):
+		string = '+'.join(self.drugs)
+		if self.ratio:
+			string += f'@{self.ratio}'
+			if self.effect: # effect level only relevant if ratio is set, otherwise confusing
+				string += f'(EC{self.effect})'
+		return string
+
 class Dose:
 	_ec_pattern = re.compile(r'([0-9]*)([A-Z]{3}[0-9]{2})/?([0-9]*)')
 	_vector_pattern = re.compile(r'(.+?) ([0-9]+[.]?[0-9]*) ?([^0-9]+)')
