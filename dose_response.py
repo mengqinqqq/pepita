@@ -155,6 +155,16 @@ def chart_pair(model_a, model_b, model_combo):
 	print(f'equipotent combo: ({concentration_combo_exper}, {score_combo_exper})')
 	#
 
+	# chart A and B on the same axes, with the same x values
+
+	model_b_scaled = Model(np.array(model_b.xs) * model_combo.cocktail.ratio, model_b.ys,
+		model_b.cocktail, model_b.E_0, model_b.E_max)
+
+	model_a.chart(close=False)
+	model_b_scaled.chart(color='tab:blue', label=False,
+		name=f'{model_a.cocktail}_w_adj_{model_b.cocktail}_overlay_@{model_combo.cocktail.effect}')
+
+	# heatmap
 	data = pd.DataFrame({
 		'concentration': list(model_combo.xs) * 3,
 		'score': np.concatenate((
