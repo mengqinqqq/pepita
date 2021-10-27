@@ -388,19 +388,20 @@ def plot_func(xs, func, label, filename_prefix, x_label=None, close=True, color=
 		plt.close()
 		plt.clf()
 
+def _get_model(filename, debug=1):
+	xs, ys = [], []
+
+	with open(filename, encoding='utf8', newline='') as f:
+		for x, y in csv.reader(f, delimiter='\t'):
+			xs.append(util.Solution(x))
+			ys.append(float(y))
+
+	return Model(xs, ys, xs[-1].get_cocktail(), debug=debug)
+
 def _get_neo_model(debug=1):
 	global _neo_model
 	if _neo_model == None:
-		xs, ys = [], []
-
-		with open(os.path.join(util.get_here(), 'examples/neo_data.csv'),
-				encoding='utf8', newline='') as f:
-			for x, y in csv.reader(f, delimiter='\t'):
-				xs.append(util.Solution(f'Neomycin {x}μM'))
-				ys.append(float(y))
-
-		_neo_model = Model(xs, ys, util.Cocktail('Neomycin'), debug=debug)
-
+		_neo_model = _get_model(os.path.join(util.get_here(), 'examples/neo_data.csv'), debug)
 	return _neo_model
 
 #
@@ -408,22 +409,20 @@ def _get_neo_model(debug=1):
 #
 
 if __name__ == '__main__':
-	model = _get_neo_model()
+	if len(sys.argv) > 1:
+		models = []
+		for filename in sys.argv[1:]:
+			models.append(_get_model(filename))
+	else:
+		models = [_get_neo_model()]
 
-	ec_90 = model.effective_concentration(0.9)
-	ec_75 = model.effective_concentration(0.75)
-	ec_50 = model.effective_concentration(0.5)
+	for model in models:
+		print(model.cocktail)
+		ec_90 = model.effective_concentration(0.9)
+		ec_75 = model.effective_concentration(0.75)
+		ec_50 = model.effective_concentration(0.5)
 
-	print(f'E_max: {model.get_absolute_E_max()} score')
-	print(f'EC_90: {ec_90} μM')
-	print(f'ec_75: {ec_75} μM')
-	print(f'ec_50: {ec_50} μM')
-
-	model_a = Model(np.multiply(model.xs, 2), model.ys, util.Cocktail('Neo_weak'))
-	model_b = Model(model.xs, model.ys, util.Cocktail('Neo_strong'))
-	model_combo = Model(
-		[x.dilute(0.5).combine_doses(x.dilute(0.5)) for x in model.xs], model.ys,
-		util.Cocktail(('Neo_weak', 'Neo_strong'), effect=50, ratio=util.Ratio(2, 1)))
-
-	chart_pair(model_a, model_b, model_combo)
-	analyze_pair(model_a, model_b, model_combo)
+		print(f'E_max: {model.get_absolute_E_max()} score')
+		print(f'EC_90: {ec_90} μM')
+		print(f'ec_75: {ec_75} μM')
+		print(f'ec_50: {ec_50} μM')
