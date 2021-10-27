@@ -25,6 +25,7 @@ def chart(results, chartfile):
 	plt.tight_layout()
 	plt.savefig(chartfile)
 
+# from ISO 12232:1998 via https://en.wikipedia.org/wiki/Film_speed#Measurements_and_calculations
 # H = qLt/(N^2)
 # H = luminous exposure (lux-seconds), proportional to pixel value
 # L = luminance = variable of interest (candela/m^2)
