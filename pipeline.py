@@ -1,7 +1,10 @@
 import argparse
 import json
+import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pandas as pd
+import seaborn as sns
 import sys
 import warnings
 
@@ -42,25 +45,37 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 		models[cocktail] = dose_response.Model(
 			conditions, scores, cocktail, E_max=dose_response.neo_E_max(), debug=1)
 
-	for model in models.values():
-		for ec_value in (10, 25, 50, 75, 90):
-			concentn = model.effective_concentration(ec_value / 100)
-			if not np.isnan(concentn):
-				print(f'{model.get_condition()}: EC_{ec_value}={concentn:.2f}{model.get_x_units()}')
 
-	models_combo = [model for model in models.values() if model.combo]
-	for model_combo in models_combo:
-		subcocktail_a = util.Cocktail(model_combo.cocktail.drugs[0])
-		if subcocktail_a not in models:
-			continue
-		subcocktail_b = util.Cocktail(model_combo.cocktail.drugs[1])
-		model_a = models[subcocktail_a]
-		model_b = models[subcocktail_b]
-		dose_response.analyze_pair(model_a, model_b, model_combo)
-		dose_response.chart_pair(model_a, model_b, model_combo)
-		combo_FIC_50 = dose_response.get_combo_FIC(0.5, model_a, model_b, model_combo)
-		combo_FIC_75 = dose_response.get_combo_FIC(0.75, model_a, model_b, model_combo)
-		print(f'{model_combo.get_condition()}: FIC_50 {combo_FIC_50}, FIC_75 {combo_FIC_75}')
+	sns.set_theme(style="darkgrid")
+
+	data = pd.DataFrame({
+		'brightness': [value for values in results.values() for value in values],
+		'concentration': [util.extract_number(key) for key, values in results.items() for _ in values],
+	})
+	ax = sns.scatterplot(
+		x='concentration', y='brightness', data=data, color='black', label='Measurements',
+		marker='.', s=64)
+
+	model = next(iter(models.values()))
+	plt.scatter(model.xs, model.ys, color='black', marker='_', s=256)
+
+	line_xs = np.linspace(0, float(max(model.xs)), 100)
+	line_ys = model.get_ys(line_xs)
+	sns.lineplot(x=line_xs, y=line_ys, ax=ax, label='Model')
+	plt.scatter(
+		model.effective_concentration(0.5), 4, color='black', label='EC50', marker='|', s=128)
+
+	ax.set_ylim(bottom=0)
+	plt.title(f'{model.get_condition()} Dose-Response Curve')
+	plt.xlabel(f'{model.get_condition()} Dose (μM)')
+	plt.ylabel('Pipeline Score')
+	plt.legend()
+
+	plt.savefig(
+		('/home/ethan/Dropbox/Ethan/Project INDIGO-Tox/progress/RPPR_2021Q4/figures/'
+		f'pipeline_components/{model.get_condition()}.png'))
+	plt.close()
+	plt.clf()
 
 def _parse_results(results):
 	drug_conditions = {}
