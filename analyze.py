@@ -96,6 +96,9 @@ def chart(results, chartfile):
 		'group': [key for key, values in results.items() for _ in values],
 	})
 
+	fig = plt.figure()
+	fig.set_size_inches(12, 8)
+	fig.set_dpi(100)
 	ax = sns.swarmplot(x='group', y='brightness', data=data)
 	ax.set_ylim(bottom=0)
 	sns.boxplot(x='group', y='brightness', data=data, showbox=False, showcaps=False,
