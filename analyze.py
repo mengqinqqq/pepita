@@ -209,7 +209,7 @@ def set_arguments(parser):
 			'wells will always be included regardless of whether they match.'))
 
 	parser.add_argument('-c', '--cap',
-		default=150,
+		default=-1,
 		type=int,
 		help=('Exclude well values larger than the given integer, expressed as a percentage of '
 			'the median control value.'))
