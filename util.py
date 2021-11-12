@@ -211,7 +211,7 @@ def get_inputs_hashfile(**kwargs):
 	for value in kwargs.values():
 		sha1hash.update(pickle.dumps(value))
 	digest = base64.b32encode(sha1hash.digest()).decode('utf-8')
-	return os.path.join(os.getcwd(), f'.{digest}.json')
+	return os.path.join(os.getcwd(), '.cache', f'.{digest}.json')
 
 def put_multimap(dict_, key, value):
 	list_ = dict_.get(key, [])
