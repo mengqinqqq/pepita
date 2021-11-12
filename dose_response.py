@@ -495,9 +495,11 @@ if __name__ == '__main__':
 		for filename in sys.argv[1:]:
 			models.append(_get_model(filename))
 	else:
-		models = [_get_neo_model()]
+		models = [_get_neo_model(debug=0)]
 
-	for model in models:
+	colors = ['#def', '#cdf', '#bcf', '#abf', '#9af', '#89f', '#78f']
+
+	for i, model in enumerate(models):
 		print(model.cocktail)
 		ec_90 = model.effective_concentration(0.9)
 		ec_75 = model.effective_concentration(0.75)
@@ -507,3 +509,13 @@ if __name__ == '__main__':
 		print(f'EC_90: {ec_90} μM')
 		print(f'ec_75: {ec_75} μM')
 		print(f'ec_50: {ec_50} μM')
+
+		model.chart(close=False, color=colors[i])
+
+	plt.xlabel(f'{models[0].get_condition()} Dose (μM)')
+	plt.ylabel('Pipeline Score')
+
+	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+	plt.savefig(os.path.join(LOG_DIR, f'{models[0].get_condition()}_{uniq_str}.png'))
+	plt.close()
+	plt.clf()
