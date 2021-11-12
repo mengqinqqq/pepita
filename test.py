@@ -214,7 +214,7 @@ def test():
 
 	# dose_response.Model
 
-	model = dose_response._get_neo_model(debug=0)
+	model = dose_response._get_neo_model()
 
 	assert model.effective_concentration(0.001) < 1
 	assert model.get_absolute_E_max() < 50

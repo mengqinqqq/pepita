@@ -16,7 +16,7 @@ LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
 _neo_model = None
 
 class Model:
-	def __init__(self, xs, ys, cocktail, E_0=100, E_max=None, debug=0):
+	def __init__(self, xs, ys, cocktail, E_0=100, E_max=None):
 		self.cocktail = cocktail
 		self.combo = len(cocktail.drugs) > 1
 		self.xs = xs
@@ -34,26 +34,40 @@ class Model:
 		else:
 			self.b, self.c, self.e = None, None, None
 
-		if debug > 0:
-			self.chart()
-
 	def __repr__(self):
 		return "{}({})".format(self.__class__.__name__, self.cocktail)
 
-	def chart(self, close=True, color='darkgrey', label=True, name=None):
-		plt.scatter(self.xs, self.ys, color='black', label='Data', marker='.')
-		if label:
-			plt.xlabel(f'{self.get_condition()} Dose (μM)')
-			plt.ylabel('Pipeline Score')
+	def chart(self, close=True, color='darkgrey', datapoints=None, label=True, name=None):
+		sns.set_theme(style='darkgrid')
+
+		plt.scatter(self.xs, self.ys, color='black', marker='_', s=256)
+
+		ax = plt.gca()
+		ax.set_ylim(bottom=0)
+
+		if datapoints:
+			data = pd.DataFrame({
+				'brightness': [value for values in datapoints.values() for value in values],
+				'concentration': [
+					float(soln) for soln, values in datapoints.items() for _ in values
+				],
+			})
+			sns.scatterplot(
+				x='concentration', y='brightness', data=data, color='black', label='Measurements',
+				marker='.', s=64)
 
 		if self.b:
 			line_xs = np.linspace(0, float(max(self.xs)), 100)
 			line_ys = self.get_ys(line_xs)
-			plt.plot(line_xs, line_ys, color=color, label='Model')
-			ec_50 = self.effective_concentration(0.5)
-			plt.scatter(ec_50, self.get_ys(ec_50), color='black', label='EC_50', marker='+')
+			sns.lineplot(x=line_xs, y=line_ys, label='Model')
+
+			plt.scatter(self.effective_concentration(0.5), 4, color='black', label='EC50', marker='|',
+				s=128)
 
 		if label:
+			plt.title(f'{self.get_condition()} Dose-Response Curve')
+			plt.xlabel(f'{self.get_condition()} Dose (μM)')
+			plt.ylabel('Pipeline Score')
 			plt.legend()
 
 		if close:
@@ -477,7 +491,10 @@ def _get_model(filename, debug=1):
 			xs.append(util.Solution(x))
 			ys.append(float(y))
 
-	return Model(xs, ys, xs[-1].get_cocktail(), debug=debug)
+	model = Model(xs, ys, xs[-1].get_cocktail())
+	if debug:
+		model.chart()
+	return model
 
 def _get_neo_model(debug=1):
 	global _neo_model

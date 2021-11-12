@@ -30,17 +30,20 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, debug=0, group
 	for cocktail, conditions in drug_conditions.items():
 		if cocktail.drugs == ('Control',):
 			continue
-		scores = []
+		cocktail_scores = {}
+		summary_scores = []
 		for control_drug in control_drugs:
 			for solution in drug_conditions[control_drug]:
 				conditions.insert(0, solution)
 		for solution in conditions:
+			cocktail_scores[solution] = results[solution.string]
 			with warnings.catch_warnings():
 				warnings.simplefilter('ignore', RuntimeWarning)
 				summary_score = np.nanmedian(results[solution.string])
-				scores.append(summary_score)
+				summary_scores.append(summary_score)
 		models[cocktail] = dose_response.Model(
-			conditions, scores, cocktail, E_max=dose_response.neo_E_max(), debug=1)
+			conditions, summary_scores, cocktail, E_max=dose_response.neo_E_max())
+		models[cocktail].chart(results[solution.string], datapoints=cocktail_scores)
 
 	models_combo = [model for model in models.values() if model.combo]
 
