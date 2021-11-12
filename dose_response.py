@@ -137,74 +137,106 @@ class Model:
 	def __repr__(self):
 		return str(self.__dict__)
 
-def analyze_pair(model_a, model_b, model_combo):
+def analyze_diamond(model_a, model_b, model_combo):
 	# print significant statistics
 	ec_a = model_a.effective_concentration(model_combo.cocktail.effect / 100)
-	print(f'Conc. of {model_a.cocktail} predicted to reach E{model_combo.cocktail.effect}: {ec_a}')
 
 	intersections = model_a.get_intersection(model_b, [ec_a/8, ec_a/4, ec_a/2, ec_a, ec_a*2],
 		model_combo.cocktail.ratio)
 	intersections = filter_valid(intersections, minimum=1, tolerance=1)
+
+	combo_ratio_a = model_combo.cocktail.ratio
+	if model_a.c < model_b.c:
+		model_a, model_b = model_b, model_a
+		combo_ratio_a = combo_ratio_a.reciprocal()
+		intersections = [intersection * combo_ratio_a for intersection in intersections]
+
+	fig = plt.figure()
+	fig.set_size_inches(12, 8)
+	fig.set_dpi(100)
+	ax = fig.add_subplot(1, 1, 1)
+	ax.margins(0.006)
+
+	f_diagonal = lambda ec_combo_a: ec_combo_a / combo_ratio_a
+	plot_func(model_a.xs, f_diagonal, 'Diagonal', None, close=False,
+		color='lightgrey', max_x=max(model_a.xs), min_x=0,
+		x_label=f'{model_a.cocktail} Dose ({model_a.get_x_units()})',
+		y_label=f'{model_b.cocktail} Dose ({model_b.get_x_units()})')
+
+	max_x, max_y = 0, 0
+
 	for intersection in intersections:
 		concentration_a = intersection
-		concentration_b = intersection / model_combo.cocktail.ratio
-		score_a = model_a.get_ys(concentration_a)
-		score_b = model_b.get_ys(concentration_b)
-		print((
-			f'Intersection point for {model_a.cocktail}: '
-			f'({concentration_a}{model_a.get_x_units()}, {score_a})'
-		))
-		print((
-			f'Intersection point for {model_b.cocktail}: '
-			f'({concentration_b}{model_b.get_x_units()}, {score_b})'
-		))
-		e_experimental = 1 - model_a.get_pct_survival(ys=score_a)
-		print(f'Actual effect: {(e_experimental * 100):.1f}% inhibition')
+		concentration_b = intersection / combo_ratio_a
+		e_experimental = 1 - model_a.get_pct_survival(xs=concentration_a)
 
-		concentration_combo_simpl = (concentration_a / 2) + (concentration_b / 2)
-		score_combo_simpl = model_combo.get_ys(concentration_combo_simpl)
-		concentration_combo_simpl_a = concentration_combo_simpl * \
-			model_combo.cocktail.ratio.to_proportion()
-		concentration_combo_simpl_b = concentration_combo_simpl * \
-			model_combo.cocktail.ratio.reciprocal().to_proportion()
-		print((
-			f'Simplistically equivalent combo: '
-			f'({concentration_combo_simpl_a}{model_a.get_x_units()} {model_a.cocktail} + '
-			f'{concentration_combo_simpl_b}{model_b.get_x_units()} {model_b.cocktail}, '
-			f'{score_combo_simpl})'
-		))
+		print(f'Intercept 1: ({concentration_a}{model_a.get_x_units()} {model_a.cocktail}, 0)')
+		print(f'Intercept 2: (0, {concentration_b}{model_b.get_x_units()} {model_b.cocktail})')
+		plt.scatter(concentration_a, 0, color='black',
+			label=f'Equipotent Single Dose, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
+		plt.scatter(0, concentration_b, color='black', s=16)
 
 		concentration_combo_theor = get_combo_additive_expectation(
-			e_experimental, model_a, model_b, model_combo)
-		score_combo_theor = model_combo.get_ys(concentration_combo_theor)
-		concentration_combo_theor_a = concentration_combo_theor * \
-			model_combo.cocktail.ratio.to_proportion()
+			e_experimental, model_a, model_b, model_combo, combo_ratio_a, plot=False)
+		concentration_combo_theor_a = concentration_combo_theor * combo_ratio_a.to_proportion()
 		concentration_combo_theor_b = concentration_combo_theor * \
-			model_combo.cocktail.ratio.reciprocal().to_proportion()
+			combo_ratio_a.reciprocal().to_proportion()
+
+		plt.scatter(concentration_combo_theor_a, concentration_combo_theor_b,
+			color='lightslategrey',
+			label=f'Expected Equipotent Combo, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
 		print((
-			f'Theoretically equivalent combo: '
-			f'({concentration_combo_theor_a}{model_a.get_x_units()} {model_a.cocktail} + '
-			f'{concentration_combo_theor_b}{model_b.get_x_units()} {model_b.cocktail}, '
-			f'{score_combo_theor})'
+			f'Theoretical equipotent combo: '
+			f'({concentration_combo_theor_a}{model_a.get_x_units()} {model_a.cocktail}, '
+			f'{concentration_combo_theor_b}{model_b.get_x_units()} {model_b.cocktail})'
 		))
 
 		concentration_combo_exper = model_combo.effective_concentration(e_experimental)
-		score_combo_exper = model_combo.get_ys(concentration_combo_exper)
-		concentration_combo_exper_a = concentration_combo_exper * \
-			model_combo.cocktail.ratio.to_proportion()
+		concentration_combo_exper_a = concentration_combo_exper * combo_ratio_a.to_proportion()
 		concentration_combo_exper_b = concentration_combo_exper * \
-			model_combo.cocktail.ratio.reciprocal().to_proportion()
+			combo_ratio_a.reciprocal().to_proportion()
+
+		color = 'tab:red' if concentration_combo_exper > concentration_combo_theor else 'tab:green'
+		plt.scatter(concentration_combo_exper_a, concentration_combo_exper_b, color=color,
+			label=f'Observed Equipotent Combo, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
 		print((
-			f'Equipotent combo: '
-			f'({concentration_combo_exper_a}{model_a.get_x_units()} {model_a.cocktail} + '
-			f'{concentration_combo_exper_b}{model_b.get_x_units()} {model_b.cocktail}, '
-			f'{score_combo_exper})'
+			f'Observed equipotent combo: '
+			f'({concentration_combo_exper_a}{model_a.get_x_units()} {model_a.cocktail}, '
+			f'{concentration_combo_exper_b}{model_b.get_x_units()} {model_b.cocktail})'
 		))
 
-		fic = get_combo_FIC(e_experimental, model_a, model_b, model_combo)
-		print(f'{model_combo.cocktail} FIC_{(e_experimental * 100):.0f}={fic:.2f}')
+		fic = get_combo_FIC(e_experimental, model_a, model_b, model_combo, combo_ratio_a)
+		print(f'FIC_{(e_experimental * 100):.0f}={fic:.2f} for {model_combo.cocktail}')
+		offset_x = max(model_a.xs) / 64
+		offset_y = max(model_b.xs) / 128
+		ax.annotate(f'$FIC_{{{(e_experimental * 100):.0f}}}={fic:.2f}$',
+			xy=(concentration_combo_exper_a + offset_x, concentration_combo_exper_b - offset_y),
+			textcoords='data')
 
-def chart_pair(model_a, model_b, model_combo):
+		inhibition_max_a = 1 - model_a.get_pct_survival(ys=model_a.c)
+		inhibition_max_b = 1 - model_a.get_pct_survival(ys=model_b.c)
+		f_isobole = lambda ec_combo_a: do_additive_isobole(
+			ec_combo_a, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b, concentration_b,
+			model_b.b, model_a.b)
+
+		plot_func(model_a.xs, f_isobole,
+			f'{model_combo.cocktail} $EC_{{{(e_experimental * 100):.0f}}}$', None, close=False,
+			color='tab:gray',
+			max_x=concentration_a, max_y=concentration_b, min_x=0, min_y=0)
+
+		max_x = max(concentration_a + offset_x, concentration_combo_theor_a + offset_x,
+			concentration_combo_exper_a + offset_x, max_x)
+		max_y = max(concentration_b + offset_y, concentration_combo_theor_b + offset_y,
+			concentration_combo_exper_b + offset_y, max_y)
+
+	plt.xlim(right=max_x)
+	plt.ylim(top=max_y)
+	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+	plt.savefig(os.path.join(LOG_DIR, f'{model_combo.cocktail}_isoboles_{uniq_str}.png'))
+	plt.close()
+	plt.clf()
+
+def chart_diamond(model_a, model_b, model_combo):
 	# chart A and B on the same axes, with the same x values
 
 	model_b_scaled = Model(np.array(model_b.xs) * model_combo.cocktail.ratio, model_b.ys,
@@ -278,9 +310,9 @@ def filter_valid(array, minimum=None, tolerance=None):
 
 	return array
 
-def get_combo_additive_expectation(pct_inhibition, model_a, model_b, model_combo, plot=True):
+def get_combo_additive_expectation(pct_inhibition, model_a, model_b, model_combo, combo_ratio_a,
+		plot=True):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
-	combo_ratio_a = model_combo.cocktail.ratio
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
 		combo_ratio_a = combo_ratio_a.reciprocal()
@@ -305,22 +337,21 @@ def get_combo_additive_expectation(pct_inhibition, model_a, model_b, model_combo
 		plot_func(model_a.xs, f_isobole, f'{model_combo.cocktail} Additive Isobole',
 			f'{model_combo.cocktail}_isobole', f'{model_a.cocktail} ({model_a.get_x_units()})',
 			close=False, color='tab:blue',
-			max_x=(ec_a_alone if not np.isnan(ec_a_alone) else model_a.effective_concentration(model_a.c + 1)),
+			max_x=(ec_a_alone if not np.isnan(ec_a_alone) else None),
 			min_y=0)
 		plot_func(model_a.xs, f_diagonal, f'{model_combo.cocktail} Ratio', None, close=False,
 			color='tab:green',
-			max_x=(ec_a_alone if not np.isnan(ec_a_alone) else model_a.effective_concentration(model_a.c + 1)))
+			max_x=(ec_a_alone if not np.isnan(ec_a_alone) else None))
 		plot_func(model_a.xs, lambda xs: ec_b_alone*(1 - xs/ec_a_alone),
 			f'Line of simplistic additivity', f'{model_combo.cocktail}_isobole', color='lightgrey',
 			linestyle='dashed', min_y=0)
 
-	conc_b = get_intersection(f_isobole, f_diagonal, simplistic_additive_estimate)[0]
-	conc_a = conc_b * combo_ratio_a
+	conc_a = get_intersection(f_isobole, f_diagonal, simplistic_additive_estimate)[0]
+	conc_b = conc_a / combo_ratio_a
 	return conc_a + conc_b
 
-def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo):
+def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_ratio_a):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
-	combo_ratio_a = model_combo.cocktail.ratio
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
 		combo_ratio_a = combo_ratio_a.reciprocal()
@@ -362,14 +393,18 @@ def neo_E_max():
 	return _neo_model.get_condition_E_max()
 
 def plot_func(xs, func, label, filename_prefix, x_label=None, close=True, color='darkgrey',
-		linestyle='solid', max_x=None, max_y=None, min_x=None, min_y=None):
+		linestyle='solid', max_x=None, max_y=None, min_x=None, min_y=None, y_label=None):
 	if x_label:
 		plt.xlabel(x_label)
-	line_xs = np.linspace(0, float(max(xs)), 100)
+	if y_label:
+		plt.ylabel(y_label)
+	max_x = float(max_x) if max_x is not None else float(max(xs))
+	min_x = float(min_x) if min_x is not None else float(min(xs))
+	line_xs = np.linspace(min_x, max_x, 100)
 	if max_x is not None:
-		line_xs = line_xs[line_xs <= max_x]
+		line_xs = line_xs[line_xs <= float(max_x)]
 	if min_x is not None:
-		line_xs = line_xs[line_xs >= min_x]
+		line_xs = line_xs[line_xs >= float(min_x)]
 	with warnings.catch_warnings():
 		warnings.simplefilter('ignore', RuntimeWarning)
 		line_ys = func(line_xs)
@@ -379,7 +414,7 @@ def plot_func(xs, func, label, filename_prefix, x_label=None, close=True, color=
 	if min_y is not None:
 		line_xs = line_xs[line_ys >= min_y]
 		line_ys = line_ys[line_ys >= min_y]
-	plt.plot(line_xs, line_ys, color=color, label=label, marker=None)
+	plt.plot(line_xs, line_ys, color=color, label=label, marker=None, zorder=-1)
 	plt.legend()
 	if close:
 		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
