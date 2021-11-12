@@ -49,7 +49,8 @@ class Dose:
 	def __hash__(self):
 		return hash(self.drug) ^ hash(self.quantity) ^ hash(self.unit)
 
-	def __init__(self, string):
+	def __init__(self, string, conversions=[]):
+		self.converted = False
 		self.ec = False
 		self.string = string
 
@@ -57,12 +58,17 @@ class Dose:
 
 		if ec_match:
 			self.ec = True
-			with open(os.path.join(get_here(), 'examples/ec_data.csv'),
-					encoding='utf8', newline='') as f:
-				ecs = {ec: vector for ec, vector in csv.reader(f, delimiter='\t')}
 			multiplier, ec_data, divisor = ec_match.group(1, 2, 3)
-			vector_match = Dose._vector_pattern.match(ecs.get(ec_data, None))
+			if ec_data in conversions:
+				self.converted = True
+				ec_data = conversions[ec_data]
+			vector_match = Dose._vector_pattern.match(ec_data)
 			self.series = ec_data
+		elif string in conversions:
+			vector_match = Dose._vector_pattern.match(conversions[string])
+			self.converted = True
+			self.series = None
+			multiplier, divisor = None, None
 		else:
 			vector_match = Dose._vector_pattern.match(string)
 			self.series = None
@@ -74,7 +80,7 @@ class Dose:
 			if not self.series:
 				self.series = vector_match.group(1)
 		else:
-			raise ValueError(f'Dose string "{string}" is not in the proper format')
+			raise ValueError(f'Dose string "{string}" unknown or not in the proper format')
 
 		if multiplier:
 			self.quantity *= int(multiplier)
@@ -126,10 +132,10 @@ class Ratio:
 		return Ratio(self.num, self.num + self.denom)
 
 class Solution:
-	def __init__(self, string):
+	def __init__(self, string, conversions=[]):
 		self.string = string
 		dose_strings = string.split(' + ')
-		self.doses = [Dose(string) for string in dose_strings]
+		self.doses = [Dose(string, conversions) for string in dose_strings]
 
 	def __eq__(self, other):
 		if not isinstance(other, Solution):

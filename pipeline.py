@@ -9,8 +9,8 @@ import analyze
 import dose_response
 import util
 
-def main(imagefiles, cap=150, chartfile=None, checkerboard=False, debug=0, group_regex='.*',
-		platefile=None, plate_control=['B'], plate_ignore=[], silent=False):
+def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions={}, debug=0,
+		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], silent=False):
 	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
 		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
 
@@ -23,7 +23,8 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, debug=0, group
 		with open(hashfile, 'w') as f: # cache results for reuse
 			json.dump(results, f, ensure_ascii=False)
 
-	drug_conditions = _parse_results(results)
+	conversions = dict(conversions)
+	drug_conditions = _parse_results(results, conversions)
 	control_drugs = [util.Cocktail(util.Dose(control).drug) for control in plate_control]
 	models = {}
 
@@ -71,11 +72,13 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, debug=0, group
 		dose_response.analyze_checkerboard(model_a, model_b, models_combo)
 		dose_response.chart_checkerboard(model_a, model_b, models_combo)
 
+def _key_value_pair(argument, delimiter='='):
+	return tuple(argument.split(delimiter))
 
-def _parse_results(results):
+def _parse_results(results, conversions):
 	drug_conditions = {}
 	for condition in results:
-		solution = util.Solution(condition)
+		solution = util.Solution(condition, conversions)
 		util.put_multimap(drug_conditions, solution.get_cocktail(), solution)
 	return drug_conditions
 
@@ -93,6 +96,14 @@ if __name__ == '__main__':
 		action='store_true',
 		help=('If present, the input will be treated as a checkerboard assay, with output produced '
 			'accordingly.'))
+
+	parser.add_argument('-cv', '--conversions',
+		nargs='*',
+		type=_key_value_pair,
+		help=('List of conversions between dose concentration labels and concrete values, each as '
+			'a separate argument, each delimited by an equals sign. For instance, ABC50 might be '
+			'an abbreviation for the EC50 of drug ABC, in which case the concrete concentration '
+			'can be supplied like "ABC50=ABC 1mM" (make sure to quote, or escape spaces).'))
 
 	analyze.set_arguments(parser)
 
