@@ -24,11 +24,14 @@ class Model:
 		self.E_max = E_max
 
 		self.equation = lambda xs, b, c, e: log_logistic_model(xs, b, c, E_0, e)
-		with warnings.catch_warnings():
-			warnings.simplefilter('ignore', RuntimeWarning)
-			warnings.simplefilter('ignore', scipy.optimize.OptimizeWarning)
-			popt, pcov = scipy.optimize.curve_fit(self.equation, self.xs, self.ys)
-		self.b, self.c, self.e = popt
+		if ys and len(ys) >= 3:
+			with warnings.catch_warnings():
+				warnings.simplefilter('ignore', RuntimeWarning)
+				warnings.simplefilter('ignore', scipy.optimize.OptimizeWarning)
+				popt, pcov = scipy.optimize.curve_fit(self.equation, self.xs, self.ys)
+			self.b, self.c, self.e = popt
+		else:
+			self.b, self.c, self.e = None, None, None
 
 		if debug > 0:
 			self.chart()
@@ -42,16 +45,17 @@ class Model:
 			plt.xlabel(f'{self.get_condition()} Dose (μM)')
 			plt.ylabel('Pipeline Score')
 
-		line_xs = np.linspace(0, float(max(self.xs)), 100)
-		line_ys = self.get_ys(line_xs)
-		plt.plot(line_xs, line_ys, color=color, label='Model')
-		plt.plot(line_xs, np.ones_like(line_xs) * self.E_0, color='lightgrey', label='E_0')
-		plt.plot(line_xs, np.ones_like(line_xs) * self.get_condition_E_max(),
-			color='lightgrey', label='E_max')
-		plt.plot(line_xs, np.ones_like(line_xs) * self.get_absolute_E_max(),
-			color='lightgrey', label='Abs_max')
-		ec_50 = self.effective_concentration(0.5)
-		plt.scatter(ec_50, self.get_ys(ec_50), color='black', label='EC_50', marker='+')
+		if self.b:
+			line_xs = np.linspace(0, float(max(self.xs)), 100)
+			line_ys = self.get_ys(line_xs)
+			plt.plot(line_xs, line_ys, color=color, label='Model')
+			plt.plot(line_xs, np.ones_like(line_xs) * self.E_0, color='lightgrey', label='E_0')
+			plt.plot(line_xs, np.ones_like(line_xs) * self.get_condition_E_max(),
+				color='lightgrey', label='E_max')
+			plt.plot(line_xs, np.ones_like(line_xs) * self.get_absolute_E_max(),
+				color='lightgrey', label='Abs_max')
+			ec_50 = self.effective_concentration(0.5)
+			plt.scatter(ec_50, self.get_ys(ec_50), color='black', label='EC_50', marker='+')
 
 		if label:
 			plt.legend()
