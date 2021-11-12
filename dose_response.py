@@ -2,6 +2,7 @@ import csv
 import numpy as np
 import os.path
 import pandas as pd
+from matplotlib.ticker import PercentFormatter
 import matplotlib.pyplot as plt
 import scipy.optimize
 import seaborn as sns
@@ -137,6 +138,9 @@ class Model:
 	def __repr__(self):
 		return str(self.__dict__)
 
+def analyze_checkerboard(model_a, model_b, models_combo):
+	pass
+
 def analyze_diamond(model_a, model_b, model_combo):
 	# print significant statistics
 	ec_a = model_a.effective_concentration(model_combo.cocktail.effect / 100)
@@ -234,6 +238,49 @@ def analyze_diamond(model_a, model_b, model_combo):
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.savefig(os.path.join(LOG_DIR, f'{model_combo.cocktail}_isoboles_{uniq_str}.png'))
 	plt.close()
+	plt.clf()
+
+def chart_checkerboard(model_a, model_b, models_combo):
+	label_a = f'{model_a.cocktail} Concentration ({model_a.get_x_units()})'
+	label_b = f'{model_b.cocktail} Concentration ({model_b.get_x_units()})'
+
+	data_dict = {}
+	data_dict[label_a] = [float(x) for x in model_a.xs]
+	data_dict[label_b] = [0] * len(model_a.xs)
+	data_dict['Pct. Survival'] = [float(y) for y in model_a.get_pct_survival(ys=model_a.ys)]
+	data_dict[label_a] = np.append(data_dict[label_a], [0] * len(model_b.xs))
+	data_dict[label_b] = np.append(data_dict[label_b], [float(x) for x in model_b.xs])
+	data_dict['Pct. Survival'] = np.append(data_dict['Pct. Survival'],
+		model_b.get_pct_survival(ys=model_b.ys))
+
+	for model_combo in models_combo:
+		xs = np.array([float(x) for x in model_combo.xs])
+		data_dict[label_a] = np.append(data_dict[label_a],
+			xs * model_combo.cocktail.ratio.to_proportion())
+		data_dict[label_b] = np.append(data_dict[label_b],
+			xs * model_combo.cocktail.ratio.reciprocal().to_proportion())
+		data_dict['Pct. Survival'] = np.append(data_dict['Pct. Survival'],
+			model_combo.get_pct_survival(ys=model_combo.ys))
+
+	data = pd.DataFrame(data_dict)
+	data = data.pivot_table(
+		index=label_a, columns=label_b, values='Pct. Survival', aggfunc='median')
+
+	fig = plt.figure()
+	fig.set_size_inches(12, 8)
+	fig.set_dpi(100)
+	ax = sns.heatmap(data,
+		vmin=0, vmax=1, cmap='mako', annot=True, fmt='.0%', linewidths=2, square=True,
+		cbar_kws={
+			'format': PercentFormatter(xmax=1, decimals=0),
+			'label': 'Remaining Hair-Cell Brightness', 'ticks': [0, 1]
+		})
+	ax.invert_yaxis()
+	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Checkerboard')
+	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+	plt.savefig(
+		f'{LOG_DIR}/{model_a.get_condition()}-{model_b.get_condition()}_checkerboard_{uniq_str}.png'
+	)
 	plt.clf()
 
 def chart_diamond(model_a, model_b, model_combo):

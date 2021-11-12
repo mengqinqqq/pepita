@@ -9,8 +9,8 @@ import analyze
 import dose_response
 import util
 
-def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefile=None,
-		plate_control=['B'], plate_ignore=[], silent=False):
+def main(imagefiles, cap=150, chartfile=None, checkerboard=False, debug=0, group_regex='.*',
+		platefile=None, plate_control=['B'], plate_ignore=[], silent=False):
 	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
 		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
 
@@ -42,23 +42,32 @@ def main(imagefiles, cap=150, chartfile=None, debug=0, group_regex='.*', platefi
 		models[cocktail] = dose_response.Model(
 			conditions, scores, cocktail, E_max=dose_response.neo_E_max(), debug=1)
 
-	for model in models.values():
-		for ec_value in (50, 75, 90):
-			concentn = model.effective_concentration(ec_value / 100)
-			if not np.isnan(concentn):
-				print((f'{model.get_condition()} '
-					f'EC_{ec_value}={concentn:.2f}{model.get_x_units()}'))
-
 	models_combo = [model for model in models.values() if model.combo]
-	for model_combo in models_combo:
-		subcocktail_a = util.Cocktail(model_combo.cocktail.drugs[0])
-		if subcocktail_a not in models:
-			continue
-		subcocktail_b = util.Cocktail(model_combo.cocktail.drugs[1])
-		model_a = models[subcocktail_a]
-		model_b = models[subcocktail_b]
-		dose_response.analyze_diamond(model_a, model_b, model_combo)
-		dose_response.chart_diamond(model_a, model_b, model_combo)
+
+	if not checkerboard:
+		for model in models.values():
+			for ec_value in (50, 75, 90):
+				concentn = model.effective_concentration(ec_value / 100)
+				if not np.isnan(concentn):
+					print((f'{model.get_condition()} '
+						f'EC_{ec_value}={concentn:.2f}{model.get_x_units()}'))
+
+		for model_combo in models_combo:
+			subcocktail_a = util.Cocktail(model_combo.cocktail.drugs[0])
+			if subcocktail_a not in models:
+				continue
+			subcocktail_b = util.Cocktail(model_combo.cocktail.drugs[1])
+			model_a = models[subcocktail_a]
+			model_b = models[subcocktail_b]
+			dose_response.analyze_diamond(model_a, model_b, model_combo)
+			dose_response.chart_diamond(model_a, model_b, model_combo)
+	else:
+		model_combo = models_combo[0]
+		model_a = models[util.Cocktail(model_combo.cocktail.drugs[0])]
+		model_b = models[util.Cocktail(model_combo.cocktail.drugs[1])]
+		dose_response.analyze_checkerboard(model_a, model_b, models_combo)
+		dose_response.chart_checkerboard(model_a, model_b, models_combo)
+
 
 def _parse_results(results):
 	drug_conditions = {}
@@ -76,6 +85,11 @@ if __name__ == '__main__':
 		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the '
 			'purposes of measuring hair cell damage under drug-combination conditions. Reports '
 			'values relative to control.'))
+
+	parser.add_argument('-cb', '--checkerboard',
+		action='store_true',
+		help=('If present, the input will be treated as a checkerboard assay, with output produced '
+			'accordingly.'))
 
 	analyze.set_arguments(parser)
 
