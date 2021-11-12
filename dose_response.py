@@ -49,11 +49,6 @@ class Model:
 			line_xs = np.linspace(0, float(max(self.xs)), 100)
 			line_ys = self.get_ys(line_xs)
 			plt.plot(line_xs, line_ys, color=color, label='Model')
-			plt.plot(line_xs, np.ones_like(line_xs) * self.E_0, color='lightgrey', label='E_0')
-			plt.plot(line_xs, np.ones_like(line_xs) * self.get_condition_E_max(),
-				color='lightgrey', label='E_max')
-			plt.plot(line_xs, np.ones_like(line_xs) * self.get_absolute_E_max(),
-				color='lightgrey', label='Abs_max')
 			ec_50 = self.effective_concentration(0.5)
 			plt.scatter(ec_50, self.get_ys(ec_50), color='black', label='EC_50', marker='+')
 
