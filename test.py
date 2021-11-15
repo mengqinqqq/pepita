@@ -72,6 +72,13 @@ def test():
 	assert util.Dose('XYZ 3μM') * 4 == util.Dose('XYZ 12μM')
 	assert util.Dose('XYZ 8μM') * 0.5 == util.Dose('XYZ 4μM')
 
+	assert util.Dose('XYZ99/2', conversions={'XYZ99': 'XYZ 1μM'}).quantity == 0.5
+	assert util.Dose('2XYZ99', conversions={'XYZ99': 'XYZ 1μM'}).quantity == 2
+	assert util.Dose('XYZ99/4', conversions={'XYZ99': 'XYZ 16μM'}).quantity == 4
+	assert util.Dose('XYZ99/2', conversions={'XYZ99': 'XYZ 16μM'}).quantity == 8
+	assert util.Dose('2XYZ99', conversions={'XYZ99': 'XYZ 16μM'}).quantity == 32
+	assert util.Dose('3XYZ99', conversions={'XYZ99': 'XYZ 16μM'}).quantity == 48
+
 	# util.Ratio
 
 	assert util.Ratio(1, 2) == util.Ratio(1, 2)
