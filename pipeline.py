@@ -9,7 +9,7 @@ import analyze
 import dose_response
 import util
 
-def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions={}, debug=0,
+def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[], debug=0,
 		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], silent=False):
 	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
 		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
@@ -98,6 +98,7 @@ if __name__ == '__main__':
 			'accordingly.'))
 
 	parser.add_argument('-cv', '--conversions',
+		default=[],
 		nargs='*',
 		type=_key_value_pair,
 		help=('List of conversions between dose concentration labels and concrete values, each as '

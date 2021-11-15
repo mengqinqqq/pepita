@@ -50,18 +50,18 @@ def test():
 
 	# util.Dose
 
-	assert util.Dose('XYZ99').drug == 'XYZ'
-	assert util.Dose('XYZ99').quantity == 1
-	assert util.Dose('XYZ99').unit == 'μM'
+	assert util.Dose('XYZ99', conversions={'XYZ99': 'XYZ 1μM'}).drug == 'XYZ'
+	assert util.Dose('XYZ99', conversions={'XYZ99': 'XYZ 1μM'}).quantity == 1
+	assert util.Dose('XYZ99', conversions={'XYZ99': 'XYZ 1μM'}).unit == 'μM'
 	assert util.Dose('XYZ 1μM').drug == 'XYZ'
 	assert util.Dose('XYZ 1μM').quantity == 1
 	assert util.Dose('XYZ 1μM').unit == 'μM'
-	assert util.Dose('XYZ99') == util.Dose('XYZ 1μM')
-	assert util.Dose('XYZ99') != util.Dose('XYZ 2μM')
+	assert util.Dose('XYZ99', conversions={'XYZ99': 'XYZ 1μM'}) == util.Dose('XYZ 1μM')
+	assert util.Dose('XYZ99', conversions={'XYZ99': 'XYZ 1μM'}) != util.Dose('XYZ 2μM')
 	assert util.Dose('XYZ 1μg/mL').unit == 'μg/mL'
 
 	assert float(util.Dose('XYZ 1μM')) == 1
-	assert float(util.Dose('XYZ99')) == 1
+	assert float(util.Dose('XYZ99', conversions={'XYZ99': 'XYZ 1μM'})) == 1
 
 	assert util.Dose('XYZ 1μM') + 1 == util.Dose('XYZ 2μM')
 	assert 1 + util.Dose('XYZ 1μM') == util.Dose('XYZ 2μM')
@@ -118,9 +118,10 @@ def test():
 	assert util.Solution('XYZ 1μM') != util.Solution('XYZ 1μg/mL')
 	assert util.Solution('XYZ 1μM') != util.Solution('XYZ 10μM')
 	assert util.Solution('XYZ 1μM') != util.Solution('ABC 1μM')
-	assert util.Solution('XYZ99') == util.Solution('XYZ 1μM')
+	assert util.Solution('XYZ99', conversions={'XYZ99': 'XYZ 1μM'}) == util.Solution('XYZ 1μM')
 	assert util.Solution('XYZ 1μM + ABC 10μg/mL') == util.Solution('XYZ 1μM + ABC 10μg/mL')
-	assert util.Solution('XYZ 1μM + ABC 10μg/mL') == util.Solution('XYZ99 + ABC 10μg/mL')
+	assert util.Solution('XYZ 1μM + ABC 10μg/mL') == \
+		util.Solution('XYZ99 + ABC 10μg/mL', conversions={'XYZ99': 'XYZ 1μM'})
 	assert util.Solution('XYZ 1μM').doses[0] == util.Dose('XYZ 1μM')
 	assert util.Solution('XYZ 1μM + ABC 10μg/mL').doses == \
 		[util.Dose('XYZ 1μM'), util.Dose('ABC 10μg/mL')]

@@ -49,7 +49,7 @@ class Dose:
 	def __hash__(self):
 		return hash(self.drug) ^ hash(self.quantity) ^ hash(self.unit)
 
-	def __init__(self, string, conversions=[]):
+	def __init__(self, string, conversions={}):
 		self.converted = False
 		self.ec = False
 		self.string = string
@@ -59,11 +59,11 @@ class Dose:
 		if ec_match:
 			self.ec = True
 			multiplier, ec_data, divisor = ec_match.group(1, 2, 3)
+			self.series = ec_data
 			if ec_data in conversions:
 				self.converted = True
 				ec_data = conversions[ec_data]
 			vector_match = Dose._vector_pattern.match(ec_data)
-			self.series = ec_data
 		elif string in conversions:
 			vector_match = Dose._vector_pattern.match(conversions[string])
 			self.converted = True
