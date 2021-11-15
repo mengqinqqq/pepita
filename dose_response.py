@@ -152,8 +152,15 @@ class Model:
 	def __repr__(self):
 		return str(self.__dict__)
 
-def analyze_checkerboard(model_a, model_b, models_combo):
-	pass
+def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation'):
+	if method == 'interpolation':
+		pass
+	elif method == 'Bliss':
+		pass
+	elif method == 'Loewe':
+		pass
+	else:
+		raise ValueException('`method` must be one of "interpolation", "Bliss", or "Loewe"')
 
 def analyze_diamond(model_a, model_b, model_combo):
 	# print significant statistics
