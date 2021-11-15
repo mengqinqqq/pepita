@@ -25,7 +25,7 @@ class Model:
 		self.E_max = E_max
 
 		self.equation = lambda xs, b, c, e: log_logistic_model(xs, b, c, E_0, e)
-		if ys and len(ys) >= 3:
+		if ys and len(ys) >= 4:
 			with warnings.catch_warnings():
 				warnings.simplefilter('ignore', RuntimeWarning)
 				warnings.simplefilter('ignore', scipy.optimize.OptimizeWarning)
@@ -154,7 +154,86 @@ class Model:
 
 def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation'):
 	if method == 'interpolation':
-		pass
+		fig = plt.figure()
+		fig.set_size_inches(12, 8)
+		fig.set_dpi(100)
+		ax = fig.add_subplot(1, 1, 1)
+		ax.margins(0.006)
+
+		effect_level = models_combo[0].cocktail.effect / 100
+		effect_pretty = f'{(effect_level * 100):.0f}'
+		ec_a = model_a.effective_concentration(effect_level)
+		ec_b = model_b.effective_concentration(effect_level)
+		print(f'{model_a.cocktail} EC{effect_pretty} = {ec_a:.1f}{model_a.get_x_units()}')
+		print(f'{model_b.cocktail} EC{effect_pretty} = {ec_b:.1f}{model_b.get_x_units()}')
+
+		plt.title((f'{model_a.cocktail}+{model_b.cocktail} '
+			f'Predicted vs. Observed $EC_{{{effect_pretty}}}$ Isobole'))
+		plt.scatter(ec_a, 0, color='black',
+			label=f'Interpolated Equipotent Single Dose, $EC_{{{effect_pretty}}}$', s=16)
+		plt.scatter(0, ec_b, color='black', s=16)
+
+		fics, max_x, max_y = [], 1, 1
+
+		for model_combo in models_combo:
+			if not model_combo.b: # some combos will not have enough datapoints: skip
+				continue
+
+			ec_combo = model_combo.effective_concentration(effect_level)
+			ec_combo_a = ec_combo * model_combo.cocktail.ratio.to_proportion()
+			ec_combo_b = ec_combo * model_combo.cocktail.ratio.reciprocal().to_proportion()
+
+			ec_combo_theor = get_combo_additive_expectation(
+				effect_level, model_a, model_b, model_combo, model_combo.cocktail.ratio, plot=False)
+
+			color = 'tab:red' if ec_combo > ec_combo_theor else 'tab:green'
+			plt.scatter(ec_combo_a, ec_combo_b, color=color, s=16)
+
+			fic = get_combo_FIC(effect_level, model_a, model_b, model_combo,
+				model_combo.cocktail.ratio)
+			fics.append(fic)
+
+			offset_x = max(model_a.xs) / 64 # arbitrary adjustments to put text in nice location
+			offset_y = max(model_b.xs) / 128
+			ax.annotate(f'$FIC_{{{effect_pretty}}}={fic:.2f}$',
+				xy=(ec_combo_a + offset_x, ec_combo_b - offset_y), textcoords='data')
+
+			print((f'{model_combo.cocktail} EC{effect_pretty} = '
+				f'{ec_combo_a:.1f}{model_a.get_x_units()} + {ec_combo_b:.1f}{model_b.get_x_units()}'
+				f'; FIC = {fic:.2f}; ({len(model_combo.ys)} datapoints)'))
+
+			max_x = max(ec_a + offset_x, ec_combo_a + offset_x, max_x)
+			max_y = max(ec_b + offset_y, ec_combo_b + offset_y, max_y)
+
+		ax.plot([], [], color='tab:green', fillstyle='left',
+			label=f'Interpolated Equipotent Combo Doses, $EC_{{{effect_pretty}}}$',
+			linestyle='none', marker='.', markerfacecoloralt='tab:red', markeredgewidth=0,
+			markersize=12)
+
+		combined_fic = util.geometric_mean(fics)
+
+		print('Combined FIC for the whole checkerboard (by interpolation analysis):',
+			f'{combined_fic:.2f}')
+
+		inhibition_max_a = 1 - model_a.get_pct_survival(ys=model_a.c)
+		inhibition_max_b = 1 - model_a.get_pct_survival(ys=model_b.c)
+		f_isobole = lambda ec_combo_a: do_additive_isobole(
+			ec_combo_a, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b, ec_b,
+			model_b.b, model_a.b)
+
+		plot_func(model_a.xs, f_isobole,
+			f'{model_a.cocktail}+{model_b.cocktail} Predicted $EC_{{{effect_pretty}}}$ Isobole',
+			None, close=False, color='tab:gray', max_x=ec_a, max_y=ec_b, min_x=0, min_y=0,
+			x_label=f'{model_a.cocktail} Dose ({model_a.get_x_units()})',
+			y_label=f'{model_b.cocktail} Dose ({model_b.get_x_units()})')
+
+		plt.xlim(right=max_x)
+		plt.ylim(top=max_y)
+		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+		plt.savefig(
+			os.path.join(LOG_DIR, f'{model_a.cocktail}+{model_b.cocktail}_isoboles_{uniq_str}.png'))
+		plt.close()
+		plt.clf()
 	elif method == 'Bliss':
 		pass
 	elif method == 'Loewe':
@@ -232,7 +311,7 @@ def analyze_diamond(model_a, model_b, model_combo):
 
 		fic = get_combo_FIC(e_experimental, model_a, model_b, model_combo, combo_ratio_a)
 		print(f'FIC_{(e_experimental * 100):.0f}={fic:.2f} for {model_combo.cocktail}')
-		offset_x = max(model_a.xs) / 64
+		offset_x = max(model_a.xs) / 64 # arbitrary adjustments to put text in nice location
 		offset_y = max(model_b.xs) / 128
 		ax.annotate(f'$FIC_{{{(e_experimental * 100):.0f}}}={fic:.2f}$',
 			xy=(concentration_combo_exper_a + offset_x, concentration_combo_exper_b - offset_y),

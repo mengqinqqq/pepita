@@ -200,6 +200,9 @@ def extract_number(string):
 	else:
 		return np.nan
 
+def geometric_mean(array):
+	return np.exp(np.mean(np.log(array)))
+
 def get_config(setting, fallback=None):
 	global _config
 	if _config == None:
