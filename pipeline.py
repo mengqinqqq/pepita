@@ -2,6 +2,7 @@ import argparse
 import json
 import numpy as np
 import os
+import matplotlib.pyplot as plt
 import sys
 import warnings
 
@@ -56,6 +57,15 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[]
 	models_combo = [model for model in models.values() if model.combo]
 
 	if not checkerboard:
+		total_max_x = 1
+		total_max_y = 1
+
+		fig = plt.figure()
+		fig.set_size_inches(12, 8)
+		fig.set_dpi(100)
+		ax = fig.add_subplot(1, 1, 1)
+		ax.margins(0.006)
+
 		for model_combo in models_combo:
 			subcocktail_a = util.Cocktail(model_combo.cocktail.drugs[0])
 			if subcocktail_a not in models:
@@ -63,8 +73,19 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[]
 			subcocktail_b = util.Cocktail(model_combo.cocktail.drugs[1])
 			model_a = models[subcocktail_a]
 			model_b = models[subcocktail_b]
-			dose_response.analyze_diamond(model_a, model_b, model_combo)
+			plot_filename, max_x, max_y = dose_response.analyze_diamond(
+				model_a, model_b, model_combo)
 			dose_response.chart_diamond(model_a, model_b, model_combo)
+
+			total_max_x = max(total_max_x, max_x)
+			total_max_y = max(total_max_y, max_y)
+
+		if models_combo:
+			plt.xlim(right=total_max_x)
+			plt.ylim(top=total_max_y)
+			plt.savefig(plot_filename)
+			plt.close()
+			plt.clf()
 	else:
 		model_combo = models_combo[0]
 		model_a = models[util.Cocktail(model_combo.cocktail.drugs[0])]

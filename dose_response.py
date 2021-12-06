@@ -283,23 +283,12 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation')
 
 def analyze_diamond(model_a, model_b, model_combo):
 	# print significant statistics
-	ec_a = model_a.effective_concentration(model_combo.cocktail.effect / 100)
-
-	intersections = model_a.get_intersection(model_b, [ec_a/8, ec_a/4, ec_a/2, ec_a, ec_a*2],
-		model_combo.cocktail.ratio)
-	intersections = filter_valid(intersections, minimum=1, tolerance=1)
-
 	combo_ratio_a = model_combo.cocktail.ratio
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
 		combo_ratio_a = combo_ratio_a.reciprocal()
-		intersections = [intersection * combo_ratio_a for intersection in intersections]
 
-	fig = plt.figure()
-	fig.set_size_inches(12, 8)
-	fig.set_dpi(100)
-	ax = fig.add_subplot(1, 1, 1)
-	ax.margins(0.006)
+	ax = plt.gca()
 
 	f_diagonal = lambda ec_combo_a: ec_combo_a / combo_ratio_a
 	plot_func(model_a.xs, f_diagonal, 'Diagonal', None, close=False,
@@ -309,76 +298,72 @@ def analyze_diamond(model_a, model_b, model_combo):
 
 	max_x, max_y = 0, 0
 
-	for intersection in intersections:
-		concentration_a = intersection
-		concentration_b = intersection / combo_ratio_a
-		e_experimental = 1 - model_a.get_pct_survival(xs=concentration_a)
+	e_experimental = 0.5
+	concentration_a = model_a.effective_concentration(e_experimental)
+	concentration_b = model_b.effective_concentration(e_experimental)
 
-		print(f'Intercept 1: ({concentration_a}{model_a.get_x_units()} {model_a.cocktail}, 0)')
-		print(f'Intercept 2: (0, {concentration_b}{model_b.get_x_units()} {model_b.cocktail})')
-		plt.scatter(concentration_a, 0, color='black',
-			label=f'Equipotent Single Dose, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
-		plt.scatter(0, concentration_b, color='black', s=16)
+	print(f'Intercept 1: ({concentration_a}{model_a.get_x_units()} {model_a.cocktail}, 0)')
+	print(f'Intercept 2: (0, {concentration_b}{model_b.get_x_units()} {model_b.cocktail})')
+	plt.scatter(concentration_a, 0, color='black',
+		label=f'Equipotent Single Dose, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
+	plt.scatter(0, concentration_b, color='black', s=16)
 
-		concentration_combo_theor = get_combo_additive_expectation(
-			e_experimental, model_a, model_b, model_combo, combo_ratio_a, plot=False)
-		concentration_combo_theor_a = concentration_combo_theor * combo_ratio_a.to_proportion()
-		concentration_combo_theor_b = concentration_combo_theor * \
-			combo_ratio_a.reciprocal().to_proportion()
+	concentration_combo_theor = get_combo_additive_expectation(
+		e_experimental, model_a, model_b, model_combo, combo_ratio_a, plot=False)
+	concentration_combo_theor_a = concentration_combo_theor * combo_ratio_a.to_proportion()
+	concentration_combo_theor_b = concentration_combo_theor * \
+		combo_ratio_a.reciprocal().to_proportion()
 
-		plt.scatter(concentration_combo_theor_a, concentration_combo_theor_b,
-			color='lightslategrey',
-			label=f'Expected Equipotent Combo, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
-		print((
-			f'Theoretical equipotent combo: '
-			f'({concentration_combo_theor_a}{model_a.get_x_units()} {model_a.cocktail}, '
-			f'{concentration_combo_theor_b}{model_b.get_x_units()} {model_b.cocktail})'
-		))
+	plt.scatter(concentration_combo_theor_a, concentration_combo_theor_b,
+		color='lightslategrey',
+		label=f'Expected Equipotent Combo, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
+	print((
+		f'Theoretical equipotent combo: '
+		f'({concentration_combo_theor_a}{model_a.get_x_units()} {model_a.cocktail}, '
+		f'{concentration_combo_theor_b}{model_b.get_x_units()} {model_b.cocktail})'
+	))
 
-		concentration_combo_exper = model_combo.effective_concentration(e_experimental)
-		concentration_combo_exper_a = concentration_combo_exper * combo_ratio_a.to_proportion()
-		concentration_combo_exper_b = concentration_combo_exper * \
-			combo_ratio_a.reciprocal().to_proportion()
+	concentration_combo_exper = model_combo.effective_concentration(e_experimental)
+	concentration_combo_exper_a = concentration_combo_exper * combo_ratio_a.to_proportion()
+	concentration_combo_exper_b = concentration_combo_exper * \
+		combo_ratio_a.reciprocal().to_proportion()
 
-		color = 'tab:red' if concentration_combo_exper > concentration_combo_theor else 'tab:green'
-		plt.scatter(concentration_combo_exper_a, concentration_combo_exper_b, color=color,
-			label=f'Observed Equipotent Combo, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
-		print((
-			f'Observed equipotent combo: '
-			f'({concentration_combo_exper_a}{model_a.get_x_units()} {model_a.cocktail}, '
-			f'{concentration_combo_exper_b}{model_b.get_x_units()} {model_b.cocktail})'
-		))
+	color = 'tab:red' if concentration_combo_exper > concentration_combo_theor else 'tab:green'
+	plt.scatter(concentration_combo_exper_a, concentration_combo_exper_b, color=color,
+		label=f'Observed Equipotent Combo, $EC_{{{(e_experimental * 100):.0f}}}$', s=16)
+	print((
+		f'Observed equipotent combo: '
+		f'({concentration_combo_exper_a}{model_a.get_x_units()} {model_a.cocktail}, '
+		f'{concentration_combo_exper_b}{model_b.get_x_units()} {model_b.cocktail})'
+	))
 
-		fic = get_combo_FIC(e_experimental, model_a, model_b, model_combo, combo_ratio_a)
-		print(f'FIC_{(e_experimental * 100):.0f}={fic:.2f} for {model_combo.cocktail}')
-		offset_x = max(model_a.xs) / 64 # arbitrary adjustments to put text in nice location
-		offset_y = max(model_b.xs) / 128
-		ax.annotate(f'$FIC_{{{(e_experimental * 100):.0f}}}={fic:.2f}$',
-			xy=(concentration_combo_exper_a + offset_x, concentration_combo_exper_b - offset_y),
-			textcoords='data')
+	fic = get_combo_FIC(e_experimental, model_a, model_b, model_combo, combo_ratio_a)
+	print(f'FIC_{(e_experimental * 100):.0f}={fic:.2f} for {model_combo.cocktail}')
+	offset_x = max(model_a.xs) / 64 # arbitrary adjustments to put text in nice location
+	offset_y = max(model_b.xs) / 128
+	ax.annotate(f'$FIC_{{{(e_experimental * 100):.0f}}}={fic:.2f}$',
+		xy=(concentration_combo_exper_a + offset_x, concentration_combo_exper_b - offset_y),
+		textcoords='data')
 
-		inhibition_max_a = 1 - model_a.get_pct_survival(ys=model_a.c)
-		inhibition_max_b = 1 - model_a.get_pct_survival(ys=model_b.c)
-		f_isobole = lambda ec_combo_a: do_additive_isobole(
-			ec_combo_a, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b, concentration_b,
-			model_b.b, model_a.b)
+	inhibition_max_a = 1 - model_a.get_pct_survival(ys=model_a.c)
+	inhibition_max_b = 1 - model_a.get_pct_survival(ys=model_b.c)
+	f_isobole = lambda ec_combo_a: do_additive_isobole(
+		ec_combo_a, model_a.e, model_b.e, inhibition_max_a, inhibition_max_b, concentration_b,
+		model_b.b, model_a.b)
 
-		plot_func(model_a.xs, f_isobole,
-			f'{model_combo.cocktail} $EC_{{{(e_experimental * 100):.0f}}}$', None, close=False,
-			color='tab:gray',
-			max_x=concentration_a, max_y=concentration_b, min_x=0, min_y=0)
+	plot_func(model_a.xs, f_isobole,
+		f'{model_combo.cocktail} $EC_{{{(e_experimental * 100):.0f}}}$', None, close=False,
+		color='tab:gray',
+		max_x=concentration_a, max_y=concentration_b, min_x=0, min_y=0)
 
-		max_x = max(concentration_a + offset_x, concentration_combo_theor_a + offset_x,
-			concentration_combo_exper_a + offset_x, max_x)
-		max_y = max(concentration_b + offset_y, concentration_combo_theor_b + offset_y,
-			concentration_combo_exper_b + offset_y, max_y)
+	max_x = max(concentration_a + offset_x, concentration_combo_theor_a + offset_x,
+		concentration_combo_exper_a + offset_x, max_x)
+	max_y = max(concentration_b + offset_y, concentration_combo_theor_b + offset_y,
+		concentration_combo_exper_b + offset_y, max_y)
 
-	plt.xlim(right=max_x)
-	plt.ylim(top=max_y)
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
-	plt.savefig(os.path.join(LOG_DIR, f'{model_combo.cocktail}_isoboles_{uniq_str}.png'))
-	plt.close()
-	plt.clf()
+	return (os.path.join(LOG_DIR, f'{model_a.cocktail}+{model_b.cocktail}_isoboles_{uniq_str}.png'),\
+		max_x, max_y)
 
 def chart_checkerboard(model_a, model_b, models_combo):
 	label_a = f'{model_a.cocktail} Concentration ({model_a.get_x_units()})'
