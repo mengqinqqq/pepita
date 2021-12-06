@@ -85,6 +85,9 @@ class Model:
 		if pct_inhibition <= 0 or pct_inhibition >= 1:
 			raise RuntimeError('Inhibition level must be between 0 and 1')
 
+		if not self.b:
+			return np.nan
+
 		b = self.b
 		c = self.c
 		d = self.E_0
