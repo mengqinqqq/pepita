@@ -235,7 +235,47 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation')
 		plt.close()
 		plt.clf()
 	elif method == 'Bliss':
-		pass
+		# following Bansal 2014, https://doi.org/10.1038/nbt.3052
+
+		label_a = f'{model_a.cocktail} Concentration ({model_a.get_x_units()})'
+		label_b = f'{model_b.cocktail} Concentration ({model_b.get_x_units()})'
+
+		data_dict = {}
+		data_dict[label_a] = [float(x) for x in model_a.xs]
+		data_dict[label_b] = [0] * len(model_a.xs)
+		data_dict['Bliss Interaction'] = [np.nan for y in model_a.ys]
+		data_dict[label_a] = np.append(data_dict[label_a], [0] * len(model_b.xs))
+		data_dict[label_b] = np.append(data_dict[label_b], [float(x) for x in model_b.xs])
+		data_dict['Bliss Interaction'] = np.append(data_dict['Bliss Interaction'],
+			[np.nan for y in model_b.ys])
+
+		for model_combo in models_combo:
+			xs = np.array([float(x) for x in model_combo.xs])
+			data_dict[label_a] = np.append(data_dict[label_a],
+				xs * model_combo.cocktail.ratio.to_proportion())
+			data_dict[label_b] = np.append(data_dict[label_b],
+				xs * model_combo.cocktail.ratio.reciprocal().to_proportion())
+			data_dict['Bliss Interaction'] = np.append(data_dict['Bliss Interaction'],
+				[get_bliss_ixn(x, y, model_a, model_b, model_combo) \
+					for x, y in zip(model_combo.xs, model_combo.ys)])
+
+		data = pd.DataFrame(data_dict)
+		data = data.pivot_table(
+			index=label_a, columns=label_b, values='Bliss Interaction', aggfunc='mean',
+			dropna=False)
+
+		fig = plt.figure()
+		fig.set_size_inches(12, 8)
+		fig.set_dpi(100)
+		ax = sns.heatmap(data,
+			cmap='vlag', center=0, annot=True, fmt='.2f', linewidths=2, square=True)
+		ax.invert_yaxis()
+		plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Bliss Ixn')
+		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+		plt.savefig(
+			f'{LOG_DIR}/{model_a.get_condition()}-{model_b.get_condition()}_bliss_{uniq_str}.png'
+		)
+		plt.clf()
 	elif method == 'Loewe':
 		pass
 	else:
@@ -456,6 +496,21 @@ def filter_valid(array, minimum=None, tolerance=None):
 			del array[removable_idx]
 
 	return array
+
+def get_bliss_ixn(x, y, model_a, model_b, model_combo):
+	if float(x) == 0:
+		return np.nan
+
+	concentration_a = x * model_combo.cocktail.ratio.to_proportion()
+	concentration_b = x * model_combo.cocktail.ratio.reciprocal().to_proportion()
+
+	e_inhibition_a = 1 - model_a.get_pct_survival(xs=concentration_a)
+	e_inhibition_b = 1 - model_b.get_pct_survival(xs=concentration_b)
+
+	fract_inhib_theor = e_inhibition_a + e_inhibition_b - e_inhibition_a * e_inhibition_b
+	fract_inhib_observed = 1 - model_combo.get_pct_survival(ys=y)
+
+	return fract_inhib_observed - fract_inhib_theor
 
 def get_combo_additive_expectation(pct_inhibition, model_a, model_b, model_combo, combo_ratio_a,
 		plot=True):
