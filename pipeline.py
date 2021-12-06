@@ -46,16 +46,16 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[]
 			conditions, summary_scores, cocktail, E_max=dose_response.neo_E_max())
 		models[cocktail].chart(results[solution.string], datapoints=cocktail_scores)
 
+	for model in models.values():
+		for ec_value in (50, 75, 90):
+			concentn = model.effective_concentration(ec_value / 100)
+			if not np.isnan(concentn):
+				print((f'{model.get_condition()} '
+					f'EC_{ec_value}={concentn:.2f}{model.get_x_units()}'))
+
 	models_combo = [model for model in models.values() if model.combo]
 
 	if not checkerboard:
-		for model in models.values():
-			for ec_value in (50, 75, 90):
-				concentn = model.effective_concentration(ec_value / 100)
-				if not np.isnan(concentn):
-					print((f'{model.get_condition()} '
-						f'EC_{ec_value}={concentn:.2f}{model.get_x_units()}'))
-
 		for model_combo in models_combo:
 			subcocktail_a = util.Cocktail(model_combo.cocktail.drugs[0])
 			if subcocktail_a not in models:
