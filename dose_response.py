@@ -149,6 +149,10 @@ class Model:
 	def get_ys(self, xs):
 		return self.equation(xs, self.b, self.c, self.e)
 
+	def pivot(self):
+		xs = [x.reverse() for x in self.xs]
+		return Model(xs, self.ys, xs[-1].get_cocktail(), self.E_0, self.E_max)
+
 	def __repr__(self):
 		return str(self.__dict__)
 
@@ -283,14 +287,13 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation')
 
 def analyze_diamond(model_a, model_b, model_combo):
 	# print significant statistics
-	combo_ratio_a = model_combo.cocktail.ratio
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
-		combo_ratio_a = combo_ratio_a.reciprocal()
+		model_combo = model_combo.pivot()
 
 	ax = plt.gca()
 
-	f_diagonal = lambda ec_combo_a: ec_combo_a / combo_ratio_a
+	f_diagonal = lambda ec_combo_a: ec_combo_a / model_combo.cocktail.ratio
 	plot_func(model_a.xs, f_diagonal, 'Diagonal', None, close=False,
 		color='lightgrey', max_x=max(model_a.xs), min_x=0,
 		x_label=f'{model_a.cocktail} Dose ({model_a.get_x_units()})',
@@ -309,10 +312,10 @@ def analyze_diamond(model_a, model_b, model_combo):
 	plt.scatter(0, concentration_b, color='black', s=16)
 
 	concentration_combo_theor = get_combo_additive_expectation(
-		e_experimental, model_a, model_b, model_combo, combo_ratio_a, plot=False)
-	concentration_combo_theor_a = concentration_combo_theor * combo_ratio_a.to_proportion()
+		e_experimental, model_a, model_b, model_combo, model_combo.cocktail.ratio, plot=False)
+	concentration_combo_theor_a = concentration_combo_theor * model_combo.cocktail.ratio.to_proportion()
 	concentration_combo_theor_b = concentration_combo_theor * \
-		combo_ratio_a.reciprocal().to_proportion()
+		model_combo.cocktail.ratio.reciprocal().to_proportion()
 
 	plt.scatter(concentration_combo_theor_a, concentration_combo_theor_b,
 		color='lightslategrey',
@@ -324,9 +327,9 @@ def analyze_diamond(model_a, model_b, model_combo):
 	))
 
 	concentration_combo_exper = model_combo.effective_concentration(e_experimental)
-	concentration_combo_exper_a = concentration_combo_exper * combo_ratio_a.to_proportion()
+	concentration_combo_exper_a = concentration_combo_exper * model_combo.cocktail.ratio.to_proportion()
 	concentration_combo_exper_b = concentration_combo_exper * \
-		combo_ratio_a.reciprocal().to_proportion()
+		model_combo.cocktail.ratio.reciprocal().to_proportion()
 
 	color = 'tab:red' if concentration_combo_exper > concentration_combo_theor else 'tab:green'
 	plt.scatter(concentration_combo_exper_a, concentration_combo_exper_b, color=color,
@@ -337,7 +340,7 @@ def analyze_diamond(model_a, model_b, model_combo):
 		f'{concentration_combo_exper_b}{model_b.get_x_units()} {model_b.cocktail})'
 	))
 
-	fic = get_combo_FIC(e_experimental, model_a, model_b, model_combo, combo_ratio_a)
+	fic = get_combo_FIC(e_experimental, model_a, model_b, model_combo, model_combo.cocktail.ratio)
 	print(f'FIC_{(e_experimental * 100):.0f}={fic:.2f} for {model_combo.cocktail}')
 	offset_x = max(model_a.xs) / 64 # arbitrary adjustments to put text in nice location
 	offset_y = max(model_b.xs) / 128
