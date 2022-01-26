@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import re
 import seaborn as sns
 import sys
 import warnings
@@ -54,19 +55,26 @@ def get_absolute_value(image, debug=0, transmittance=1, vignette=lambda theta: 1
 
 	return np.nan if np.isnan(L) else int(L / 1_000_000) # to make results more readable
 
-def main(imagefiles, chartfile=None, debug=0, silent=False):
+def main(imagefiles, cap=-1, chartfile=None, debug=0, group_regex='.*', platefile=None,
+		plate_control=['B'], plate_ignore=[], silent=False):
 	results = {}
 
-	images = [analyze.Image(filename, None, debug) for filename in imagefiles]
-	plates = list({image.plate: 1 for image in images})# deduplicated list of plates
+	schematic = analyze.get_schematic(platefile, len(imagefiles), plate_ignore)
+	groups = list(dict.fromkeys(schematic))# deduplicated copy of `schematic`
+	pattern = re.compile(group_regex)
+	images = [analyze.Image(filename, group, debug) \
+		for filename, group in zip(imagefiles, schematic) \
+			if group in plate_control or pattern.search(group)]
 
-	for plate in plates:
-		relevant_values = [get_absolute_value(img, debug) for img in images if img.plate == plate]
-		results[plate] = relevant_values
-		if not silent:
-			with warnings.catch_warnings():
-				warnings.simplefilter('ignore', RuntimeWarning)
-				print(plate, np.nanmedian(relevant_values), relevant_values)
+	pattern = re.compile(group_regex)
+	for group in groups:
+		if group in plate_control or pattern.search(group):
+			relevant_values = [img.get_raw_value() for img in images if img.group == group]
+			results[group] = relevant_values
+			if not silent:
+				with warnings.catch_warnings():
+					warnings.simplefilter('ignore', RuntimeWarning)
+					print(group, np.nanmedian(relevant_values), relevant_values)
 
 	if chartfile:
 		chart(results, chartfile)
@@ -80,24 +88,10 @@ def main(imagefiles, chartfile=None, debug=0, silent=False):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
 		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the '
-			'purposes of measuring hair cell damage. Reports values in absolute terms.'))
+			'purposes of measuring hair cell damage in absolute terms. Reports values in '
+			'arbitrary units not relative to any other value.'))
 
-	parser.add_argument('imagefiles',
-		nargs='+',
-		help='The absolute or relative filenames where the relevant images can be found.')
-	parser.add_argument('-ch', '--chartfile',
-		help='If supplied, the resulting numbers will be charted at the given filename.')
-
-	parser.add_argument('-d', '--debug',
-		action='count',
-		default=0,
-		help=('Indicates intermediate processing images should be output for troubleshooting '
-			'purposes. Including this argument once will yield one intermediate image per input '
-			'file, twice will yield several intermediate images per input file.'))
-	parser.add_argument('-s', '--silent',
-		action='store_true',
-		help=('If present, printed output will be suppressed. More convenient for programmatic '
-			'execution.'))
+	analyze.set_arguments(parser)
 
 	args = parser.parse_args(sys.argv[1:])
 	args_dict = vars(args)
