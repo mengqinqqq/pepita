@@ -1,15 +1,43 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import scipy.optimize
 import scipy.stats
+import seaborn as sns
+from time import time
+import warnings
+
+import util
+
+LOG_DIR = f'{util.get_config("log_dir")}/interactions2'
 
 rng = np.random.default_rng()
+
+def chart_gamma(gammas, gamma_ci_his, gamma_ci_los, model_size):
+	parameters = ['γ₀', 'γ₁', 'γ₂', 'γ₃', 'γ₄', 'γ₅']
+	parameters = parameters[:model_size] # trim to appropriate size
+	terms = ['', 'a', 'b', 'ab', 'a²', 'b²']
+	terms = terms[:model_size] # trim to appropriate size
+
+	print('Model: I =', ' + '.join([param + term for param, term in zip(parameters, terms)]))
+
+	data = pd.DataFrame({
+		'Term': terms,
+		'Parameter': parameters,
+		'Value': gammas,
+		'CI (high)': gamma_ci_his,
+		'CI (low)': gamma_ci_los,
+		'Significant': [ci_lo * ci_hi > 0 for ci_lo, ci_hi in zip(gamma_ci_los, gamma_ci_his)]
+	})
+
+	print(data.transpose())
 
 def normalize(values, maximum=100, minimum=0):
 	return (values - minimum) / (maximum - minimum)
 
 # as per formulas in Zhao 2014, https://doi.org/10.1177/1087057114521867
 def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a_ab, doses_b_ab,
-		responses_all_ab, positive_control, sampling_iterations=100, sample_size=10, model_size=4,
+		responses_all_ab, positive_control, sampling_iterations=1000, sample_size=20, model_size=4,
 		alpha=0.05):
 	positive_control_value = np.nanmean(positive_control)
 	responses_all_a = normalize(responses_all_a, maximum=100, minimum=positive_control_value)
@@ -23,8 +51,10 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 	est_response_covarmat_a = np.ma.cov(np.ma.masked_invalid(responses_all_a))
 	est_response_covarmat_b = np.ma.cov(np.ma.masked_invalid(responses_all_b))
 
-	# feels like the error/variance in responses_all_ab should be taken into account?
-	observed_responses_ab = np.nanmean(responses_all_ab, axis=2)
+	with warnings.catch_warnings():
+		warnings.simplefilter('ignore', RuntimeWarning)
+		# feels like the error/variance in responses_all_ab should be taken into account?
+		observed_responses_ab = np.nanmean(responses_all_ab, axis=2)
 	valid_combo_idxs = ~np.isnan(observed_responses_ab)
 
 	doses_a_ab = doses_a_ab[valid_combo_idxs]
@@ -74,39 +104,34 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 
 	z = scipy.stats.norm.ppf(1 - alpha/2)
 
+	est_gamma_stddev = np.sqrt(np.diagonal(np.mean(gamma_sample_covars, axis=2)))
+
 	interaction_index_estimates = np.zeros((len(doses_a), len(doses_b)))
-	interaction_index_ci_lowers = np.zeros((len(doses_a), len(doses_b)))
-	interaction_index_ci_uppers = np.zeros((len(doses_a), len(doses_b)))
+	interaction_index_ci_his = np.zeros((len(doses_a), len(doses_b)))
+	interaction_index_ci_los = np.zeros((len(doses_a), len(doses_b)))
 
 	for idx_a in range(len(doses_a)):
 		dose_a = doses_a[idx_a]
-
 		for idx_b in range(len(doses_b)):
 			dose_b = doses_b[idx_b]
 
 			x = np.array([1, dose_a, dose_b, dose_a * dose_b, dose_a**2, dose_b**2])
 			x = x[:model_size] # trim to appropriate size
 
-			interaction_index_estimate = sum(x * est_gamma)
+			interaction_index_estimate = np.dot(x, est_gamma)
 			interaction_index_uncertainty = \
-				z * np.sqrt(np.matmul(np.matmul(x, est_gamma_covarmat), x))
+				z * np.sqrt(x @ est_gamma_covarmat @ x) # @ is matrix multiplication
 			interaction_index_estimates[idx_a, idx_b] = interaction_index_estimate
-			interaction_index_ci_lowers[idx_a, idx_b] = \
-				interaction_index_estimate - interaction_index_uncertainty
-			interaction_index_ci_uppers[idx_a, idx_b] = \
+			interaction_index_ci_his[idx_a, idx_b] = \
 				interaction_index_estimate + interaction_index_uncertainty
+			interaction_index_ci_los[idx_a, idx_b] = \
+				interaction_index_estimate - interaction_index_uncertainty
 
-	results = []
-
-	for idx_a in range(len(doses_a)):
-		results.append([])
-		for idx_b in range(len(doses_b)):
-			results[idx_a].append('{:.3f}, ({:.3f}, {:.3f})'.format(
-				interaction_index_estimates[idx_a, idx_b],
-				interaction_index_ci_lowers[idx_a, idx_b],
-				interaction_index_ci_uppers[idx_a, idx_b]))
-
-	print(results)
+	plot_heatmap('A', 'B', 'μM', 'μM', doses_a, doses_b, est_true_responses_a, est_true_responses_b,
+		doses_a_ab, doses_b_ab, observed_responses_ab, interaction_index_estimates,
+		interaction_index_ci_his, interaction_index_ci_los, model_size)
+	chart_gamma(est_gamma, est_gamma + est_gamma_stddev*z, est_gamma - est_gamma_stddev*z,
+		model_size)
 
 def model_4_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
 	gamma_0, gamma_1, gamma_2, gamma_3 = gamma
@@ -124,6 +149,82 @@ def model_6_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_re
 
 	return residuals
 
+def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a, responses_b,
+		doses_a_ab, doses_b_ab, responses_ab, I_estimates, I_ci_his, I_ci_los, model_size):
+	label_a = f'{name_a} Concentration ({units_a})'
+	label_b = f'{name_b} Concentration ({units_a})'
+
+	dose_response_dict = {x: y for x, y in zip(doses_a, responses_a)}
+	dose_response_dict.update({x: y for x, y in zip(doses_b, responses_b)})
+
+	data_dict = {}
+	data_dict[label_a] = [float(x) for x in doses_a]
+	data_dict[label_b] = [0] * len(doses_a)
+	data_dict['I'] = [np.nan for y in responses_a]
+	data_dict['M(I)'] = [np.nan for y in responses_a]
+	data_dict['CI(I, lo)'] = [np.nan for y in responses_a]
+	data_dict['CI(I, hi)'] = [np.nan for y in responses_a]
+
+	data_dict[label_a] = np.append(data_dict[label_a], [0] * len(doses_b))
+	data_dict[label_b] = np.append(data_dict[label_b], [float(x) for x in doses_b])
+	data_dict['I'] = np.append(data_dict['I'], [np.nan for y in responses_b])
+	data_dict['M(I)'] = np.append(data_dict['M(I)'], [np.nan for y in responses_b])
+	data_dict['CI(I, lo)'] = np.append(data_dict['CI(I, lo)'], [np.nan for y in responses_b])
+	data_dict['CI(I, hi)'] = np.append(data_dict['CI(I, hi)'], [np.nan for y in responses_b])
+
+	for dose_a, dose_b, response_ab, I_est, I_ci_lower, I_ci_upper in zip(
+			doses_a_ab.flatten(), doses_b_ab.flatten(), responses_ab.flatten(),
+			I_estimates.flatten(), I_ci_los.flatten(), I_ci_his.flatten()):
+		data_dict[label_a] = np.append(data_dict[label_a], [float(dose_a)])
+		data_dict[label_b] = np.append(data_dict[label_b], [float(dose_b)])
+
+		response_a = dose_response_dict[dose_a]
+		response_b = dose_response_dict[dose_b]
+		response_ab_expected = response_a + response_b - response_a*response_b
+
+		data_dict['I'] = np.append(data_dict['I'], [response_ab - response_ab_expected])
+		data_dict['M(I)'] = np.append(data_dict['M(I)'], I_est)
+		data_dict['CI(I, lo)'] = np.append(data_dict['CI(I, lo)'], I_ci_lower)
+		data_dict['CI(I, hi)'] = np.append(data_dict['CI(I, hi)'], I_ci_upper)
+
+	data = pd.DataFrame(data_dict)
+	data['significance'] = data.apply(
+		lambda row: 'S' if row['CI(I, lo)'] * row['CI(I, hi)'] > 0 else 'NS', axis=1)
+	data['label'] = data.apply(lambda row: row2label(row), axis=1)
+
+	data_values = data.pivot_table(
+		index=label_a, columns=label_b, values='I', aggfunc='mean', dropna=False)
+	data_annotations = data.pivot_table(
+		index=label_a, columns=label_b, values='label', aggfunc='first', dropna=False)
+
+	fig = plt.figure()
+	fig.set_size_inches(12, 8)
+	fig.set_dpi(100)
+	ax = sns.heatmap(data_values,
+		# vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data['label'], fmt='.1f', linewidths=2,
+		vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data_annotations, fmt='', linewidths=2,
+		square=True,
+		cbar_kws={
+			'extend': 'both',
+			'label': 'Excess Over Bliss',
+			'ticks': [-1, 0, 1],
+		})
+	ax.collections[0].colorbar.set_ticklabels(
+		['-1 (Antagonism)', '0 (Additivity)', '+1 (Synergy)'])
+	ax.invert_yaxis()
+	plt.title(f'A vs. B: Bliss Ixn ({model_size}-param)')
+	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+	plt.savefig(
+		f'{LOG_DIR}/{name_a}-{name_b}_bliss_{model_size}-param_{uniq_str}.png'
+	)
+	plt.clf()
+
+def row2label(row):
+	if np.isnan(row['I']):
+		return ''
+	else:
+		return 'I = {:.2f}\nM(I) = {:.2f}\nCI =  \n  ({:.2f}, {:.2f})\n{}'.format(
+			row['I'], row['M(I)'], row['CI(I, lo)'], row['CI(I, hi)'], row['significance'])
 
 if __name__ == '__main__':
 	## example/test values
@@ -182,11 +283,9 @@ if __name__ == '__main__':
 	])
 	positive_control = np.array([10.0, 6.0, 6.0, 5.0])
 
-	print('Four-parameter model:')
 	response_surface(
 		doses_a, responses_all_a, doses_b, responses_all_b, doses_a_ab, doses_b_ab,
 		responses_all_ab, positive_control, model_size=4)
-	print('Six-parameter model:')
 	response_surface(
 		doses_a, responses_all_a, doses_b, responses_all_b, doses_a_ab, doses_b_ab,
 		responses_all_ab, positive_control, model_size=6)
