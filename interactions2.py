@@ -13,6 +13,31 @@ LOG_DIR = f'{util.get_config("log_dir")}/interactions2'
 
 rng = np.random.default_rng()
 
+def fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b, doses_a_ab, doses_b_ab,
+		est_response_covarmat_a, est_response_covarmat_b, est_true_responses_a,
+		est_true_responses_b, valid_combo_idxs)
+	noises_a = rng.multivariate_normal(np.zeros(len(doses_a)), est_response_covarmat_a)
+	noises_b = rng.multivariate_normal(np.zeros(len(doses_b)), est_response_covarmat_b)
+
+	est_theoretical_responses_ab = np.zeros((len(doses_a), len(doses_b)))
+
+	for idx_a in range(len(doses_a)):
+		for idx_b in range(len(doses_b)):
+			# Zhao 2014, Eq. 5
+			est_theoretical_responses_ab[idx_a, idx_b] = \
+				est_true_responses_a[idx_a] + est_true_responses_b[idx_b] \
+				- est_true_responses_a[idx_a]*est_true_responses_b[idx_b] \
+				+ noises_a[idx_a] + noises_b[idx_b] \
+				- noises_a[idx_a]*noises_b[idx_b]
+
+	est_theoretical_responses_ab = est_theoretical_responses_ab[valid_combo_idxs]
+
+	return scipy.optimize.least_squares(model_function, gamma_guess_0,
+		args=(doses_a_ab, doses_b_ab, observed_responses_ab, est_theoretical_responses_ab))
+
+def normalize(values, maximum=100, minimum=0):
+	return (values - minimum) / (maximum - minimum)
+
 def print_gamma_table(gammas, gamma_ci_his, gamma_ci_los, model_size):
 	parameters = ['γ₀', 'γ₁', 'γ₂', 'γ₃', 'γ₄', 'γ₅']
 	parameters = parameters[:model_size] # trim to appropriate size
@@ -32,8 +57,91 @@ def print_gamma_table(gammas, gamma_ci_his, gamma_ci_los, model_size):
 
 	print(data.transpose())
 
-def normalize(values, maximum=100, minimum=0):
-	return (values - minimum) / (maximum - minimum)
+def model_4_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
+	gamma_0, gamma_1, gamma_2, gamma_3 = gamma
+
+	residuals = gamma_0 + gamma_1*doses_a + gamma_2*doses_b + gamma_3*doses_a*doses_b \
+		- observed_responses_ab + theoretical_responses_ab
+
+	return residuals
+
+def model_6_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
+	gamma_0, gamma_1, gamma_2, gamma_3, gamma_4, gamma_5 = gamma
+
+	residuals = gamma_0 + gamma_1*doses_a + gamma_2*doses_b + gamma_3*doses_a*doses_b \
+		+ gamma_4*doses_a**2 + gamma_5*doses_b**2 - observed_responses_ab + theoretical_responses_ab
+
+	return residuals
+
+def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a, responses_b,
+		doses_a_ab, doses_b_ab, responses_ab, I_estimates, I_ci_his, I_ci_los, model_size):
+	label_a = f'{name_a} Concentration ({units_a})'
+	label_b = f'{name_b} Concentration ({units_a})'
+
+	dose_response_dict = {x: y for x, y in zip(doses_a, responses_a)}
+	dose_response_dict.update({x: y for x, y in zip(doses_b, responses_b)})
+
+	data_dict = {}
+	data_dict[label_a] = [float(x) for x in doses_a]
+	data_dict[label_b] = [0] * len(doses_a)
+	data_dict['I'] = [np.nan for y in responses_a]
+	data_dict['M(I)'] = [np.nan for y in responses_a]
+	data_dict['CI(I, lo)'] = [np.nan for y in responses_a]
+	data_dict['CI(I, hi)'] = [np.nan for y in responses_a]
+
+	data_dict[label_a] = np.append(data_dict[label_a], [0] * len(doses_b))
+	data_dict[label_b] = np.append(data_dict[label_b], [float(x) for x in doses_b])
+	data_dict['I'] = np.append(data_dict['I'], [np.nan for y in responses_b])
+	data_dict['M(I)'] = np.append(data_dict['M(I)'], [np.nan for y in responses_b])
+	data_dict['CI(I, lo)'] = np.append(data_dict['CI(I, lo)'], [np.nan for y in responses_b])
+	data_dict['CI(I, hi)'] = np.append(data_dict['CI(I, hi)'], [np.nan for y in responses_b])
+
+	for dose_a, dose_b, response_ab, I_est, I_ci_lower, I_ci_upper in zip(
+			doses_a_ab.flatten(), doses_b_ab.flatten(), responses_ab.flatten(),
+			I_estimates.flatten(), I_ci_los.flatten(), I_ci_his.flatten()):
+		data_dict[label_a] = np.append(data_dict[label_a], [float(dose_a)])
+		data_dict[label_b] = np.append(data_dict[label_b], [float(dose_b)])
+
+		response_a = dose_response_dict[dose_a]
+		response_b = dose_response_dict[dose_b]
+		response_ab_expected = response_a + response_b - response_a*response_b
+
+		data_dict['I'] = np.append(data_dict['I'], [response_ab - response_ab_expected])
+		data_dict['M(I)'] = np.append(data_dict['M(I)'], I_est)
+		data_dict['CI(I, lo)'] = np.append(data_dict['CI(I, lo)'], I_ci_lower)
+		data_dict['CI(I, hi)'] = np.append(data_dict['CI(I, hi)'], I_ci_upper)
+
+	data = pd.DataFrame(data_dict)
+	data['significance'] = data.apply(
+		lambda row: 'S' if row['CI(I, lo)'] * row['CI(I, hi)'] > 0 else 'NS', axis=1)
+	data['label'] = data.apply(lambda row: row2label(row), axis=1)
+
+	data_values = data.pivot_table(
+		index=label_a, columns=label_b, values='I', aggfunc='mean', dropna=False)
+	data_annotations = data.pivot_table(
+		index=label_a, columns=label_b, values='label', aggfunc='first', dropna=False)
+
+	fig = plt.figure()
+	fig.set_size_inches(12, 8)
+	fig.set_dpi(100)
+	ax = sns.heatmap(data_values,
+		# vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data['label'], fmt='.1f', linewidths=2,
+		vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data_annotations, fmt='', linewidths=2,
+		square=True,
+		cbar_kws={
+			'extend': 'both',
+			'label': 'Excess Over Bliss',
+			'ticks': [-1, 0, 1],
+		})
+	ax.collections[0].colorbar.set_ticklabels(
+		['-1 (Antagonism)', '0 (Additivity)', '+1 (Synergy)'])
+	ax.invert_yaxis()
+	plt.title(f'A vs. B: Bliss Ixn ({model_size}-param)')
+	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+	plt.savefig(
+		f'{LOG_DIR}/{name_a}-{name_b}_bliss_{model_size}-param_{uniq_str}.png'
+	)
+	plt.clf()
 
 # as per formulas in Zhao 2014, https://doi.org/10.1177/1087057114521867
 def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a_ab, doses_b_ab,
@@ -126,114 +234,6 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 		interaction_index_ci_his, interaction_index_ci_los, model_size)
 	print_gamma_table(est_gamma, est_gamma + est_gamma_stddev*z, est_gamma - est_gamma_stddev*z,
 		model_size)
-
-def fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b, doses_a_ab, doses_b_ab,
-		est_response_covarmat_a, est_response_covarmat_b, est_true_responses_a,
-		est_true_responses_b, valid_combo_idxs)
-	noises_a = rng.multivariate_normal(np.zeros(len(doses_a)), est_response_covarmat_a)
-	noises_b = rng.multivariate_normal(np.zeros(len(doses_b)), est_response_covarmat_b)
-
-	est_theoretical_responses_ab = np.zeros((len(doses_a), len(doses_b)))
-
-	for idx_a in range(len(doses_a)):
-		for idx_b in range(len(doses_b)):
-			# Zhao 2014, Eq. 5
-			est_theoretical_responses_ab[idx_a, idx_b] = \
-				est_true_responses_a[idx_a] + est_true_responses_b[idx_b] \
-				- est_true_responses_a[idx_a]*est_true_responses_b[idx_b] \
-				+ noises_a[idx_a] + noises_b[idx_b] \
-				- noises_a[idx_a]*noises_b[idx_b]
-
-	est_theoretical_responses_ab = est_theoretical_responses_ab[valid_combo_idxs]
-
-	return scipy.optimize.least_squares(model_function, gamma_guess_0,
-		args=(doses_a_ab, doses_b_ab, observed_responses_ab, est_theoretical_responses_ab))
-
-def model_4_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
-	gamma_0, gamma_1, gamma_2, gamma_3 = gamma
-
-	residuals = gamma_0 + gamma_1*doses_a + gamma_2*doses_b + gamma_3*doses_a*doses_b \
-		- observed_responses_ab + theoretical_responses_ab
-
-	return residuals
-
-def model_6_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
-	gamma_0, gamma_1, gamma_2, gamma_3, gamma_4, gamma_5 = gamma
-
-	residuals = gamma_0 + gamma_1*doses_a + gamma_2*doses_b + gamma_3*doses_a*doses_b \
-		+ gamma_4*doses_a**2 + gamma_5*doses_b**2 - observed_responses_ab + theoretical_responses_ab
-
-	return residuals
-
-def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a, responses_b,
-		doses_a_ab, doses_b_ab, responses_ab, I_estimates, I_ci_his, I_ci_los, model_size):
-	label_a = f'{name_a} Concentration ({units_a})'
-	label_b = f'{name_b} Concentration ({units_a})'
-
-	dose_response_dict = {x: y for x, y in zip(doses_a, responses_a)}
-	dose_response_dict.update({x: y for x, y in zip(doses_b, responses_b)})
-
-	data_dict = {}
-	data_dict[label_a] = [float(x) for x in doses_a]
-	data_dict[label_b] = [0] * len(doses_a)
-	data_dict['I'] = [np.nan for y in responses_a]
-	data_dict['M(I)'] = [np.nan for y in responses_a]
-	data_dict['CI(I, lo)'] = [np.nan for y in responses_a]
-	data_dict['CI(I, hi)'] = [np.nan for y in responses_a]
-
-	data_dict[label_a] = np.append(data_dict[label_a], [0] * len(doses_b))
-	data_dict[label_b] = np.append(data_dict[label_b], [float(x) for x in doses_b])
-	data_dict['I'] = np.append(data_dict['I'], [np.nan for y in responses_b])
-	data_dict['M(I)'] = np.append(data_dict['M(I)'], [np.nan for y in responses_b])
-	data_dict['CI(I, lo)'] = np.append(data_dict['CI(I, lo)'], [np.nan for y in responses_b])
-	data_dict['CI(I, hi)'] = np.append(data_dict['CI(I, hi)'], [np.nan for y in responses_b])
-
-	for dose_a, dose_b, response_ab, I_est, I_ci_lower, I_ci_upper in zip(
-			doses_a_ab.flatten(), doses_b_ab.flatten(), responses_ab.flatten(),
-			I_estimates.flatten(), I_ci_los.flatten(), I_ci_his.flatten()):
-		data_dict[label_a] = np.append(data_dict[label_a], [float(dose_a)])
-		data_dict[label_b] = np.append(data_dict[label_b], [float(dose_b)])
-
-		response_a = dose_response_dict[dose_a]
-		response_b = dose_response_dict[dose_b]
-		response_ab_expected = response_a + response_b - response_a*response_b
-
-		data_dict['I'] = np.append(data_dict['I'], [response_ab - response_ab_expected])
-		data_dict['M(I)'] = np.append(data_dict['M(I)'], I_est)
-		data_dict['CI(I, lo)'] = np.append(data_dict['CI(I, lo)'], I_ci_lower)
-		data_dict['CI(I, hi)'] = np.append(data_dict['CI(I, hi)'], I_ci_upper)
-
-	data = pd.DataFrame(data_dict)
-	data['significance'] = data.apply(
-		lambda row: 'S' if row['CI(I, lo)'] * row['CI(I, hi)'] > 0 else 'NS', axis=1)
-	data['label'] = data.apply(lambda row: row2label(row), axis=1)
-
-	data_values = data.pivot_table(
-		index=label_a, columns=label_b, values='I', aggfunc='mean', dropna=False)
-	data_annotations = data.pivot_table(
-		index=label_a, columns=label_b, values='label', aggfunc='first', dropna=False)
-
-	fig = plt.figure()
-	fig.set_size_inches(12, 8)
-	fig.set_dpi(100)
-	ax = sns.heatmap(data_values,
-		# vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data['label'], fmt='.1f', linewidths=2,
-		vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data_annotations, fmt='', linewidths=2,
-		square=True,
-		cbar_kws={
-			'extend': 'both',
-			'label': 'Excess Over Bliss',
-			'ticks': [-1, 0, 1],
-		})
-	ax.collections[0].colorbar.set_ticklabels(
-		['-1 (Antagonism)', '0 (Additivity)', '+1 (Synergy)'])
-	ax.invert_yaxis()
-	plt.title(f'A vs. B: Bliss Ixn ({model_size}-param)')
-	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
-	plt.savefig(
-		f'{LOG_DIR}/{name_a}-{name_b}_bliss_{model_size}-param_{uniq_str}.png'
-	)
-	plt.clf()
 
 def row2label(row):
 	if np.isnan(row['I']):
