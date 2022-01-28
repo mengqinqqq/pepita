@@ -13,16 +13,16 @@ LOG_DIR = f'{util.get_config("log_dir")}/interactions2'
 
 rng = np.random.default_rng()
 
-def chart_gamma(gammas, gamma_ci_his, gamma_ci_los, model_size):
+def print_gamma_table(gammas, gamma_ci_his, gamma_ci_los, model_size):
 	parameters = ['γ₀', 'γ₁', 'γ₂', 'γ₃', 'γ₄', 'γ₅']
 	parameters = parameters[:model_size] # trim to appropriate size
-	terms = ['', 'a', 'b', 'ab', 'a²', 'b²']
-	terms = terms[:model_size] # trim to appropriate size
+	variables = ['', 'a', 'b', 'ab', 'a²', 'b²']
+	variables = variables[:model_size] # trim to appropriate size
 
-	print('Model: I =', ' + '.join([param + term for param, term in zip(parameters, terms)]))
+	print('Model: I =', ' + '.join([param + var for param, var in zip(parameters, variables)]))
 
 	data = pd.DataFrame({
-		'Term': terms,
+		'Variable': variables,
 		'Parameter': parameters,
 		'Value': gammas,
 		'CI (high)': gamma_ci_his,
@@ -44,12 +44,16 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 	responses_all_b = normalize(responses_all_b, maximum=100, minimum=positive_control_value)
 	responses_all_ab = normalize(responses_all_ab, maximum=100, minimum=positive_control_value)
 
+	#
+	# Establish a model
+	#
+
 	est_true_responses_a = np.nanmean(responses_all_a, axis=1)
 	est_true_responses_b = np.nanmean(responses_all_b, axis=1)
 
-	# covariance with nans ignored
-	est_response_covarmat_a = np.ma.cov(np.ma.masked_invalid(responses_all_a))
-	est_response_covarmat_b = np.ma.cov(np.ma.masked_invalid(responses_all_b))
+	# might need to replace this with Zhao 2014, Eqs. 7 and 8?
+	est_response_covarmat_a = np.ma.cov(np.ma.masked_invalid(responses_all_a)) # covar ignoring NaN
+	est_response_covarmat_b = np.ma.cov(np.ma.masked_invalid(responses_all_b)) # covar ignoring NaN
 
 	with warnings.catch_warnings():
 		warnings.simplefilter('ignore', RuntimeWarning)
@@ -68,7 +72,7 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 		model_function = model_6_param
 		gamma_guess_0 = [0.5, 0, 0, 0, 0, 0]
 	else:
-		raise ValueException('Model with %d parameters is not defined' % model_size)
+		raise ValueException(f'Model with {model_size} parameters is not defined')
 
 	gamma_sample_means = np.zeros((model_size, sampling_iterations))
 	gamma_sample_covars = np.zeros((model_size, model_size, sampling_iterations))
@@ -76,23 +80,9 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 	for sample_i in range(sampling_iterations):
 		gammas = np.zeros((model_size, sample_size))
 		for point_j in range(sample_size):
-			noises_a = rng.multivariate_normal(np.zeros(len(doses_a)), est_response_covarmat_a)
-			noises_b = rng.multivariate_normal(np.zeros(len(doses_b)), est_response_covarmat_b)
-
-			est_theoretical_responses_ab = np.zeros((len(doses_a), len(doses_b)))
-
-			for idx_a in range(len(doses_a)):
-				for idx_b in range(len(doses_b)):
-					est_theoretical_responses_ab[idx_a, idx_b] = \
-						est_true_responses_a[idx_a] + est_true_responses_b[idx_b] \
-						- est_true_responses_a[idx_a]*est_true_responses_b[idx_b] \
-						+ noises_a[idx_a] + noises_b[idx_b] \
-						- noises_a[idx_a]*noises_b[idx_b]
-
-			est_theoretical_responses_ab = est_theoretical_responses_ab[valid_combo_idxs]
-
-			model_j = scipy.optimize.least_squares(model_function, gamma_guess_0,
-				args=(doses_a_ab, doses_b_ab, observed_responses_ab, est_theoretical_responses_ab))
+			model_j = fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b,
+				doses_a_ab, doses_b_ab, est_response_covarmat_a, est_response_covarmat_b,
+				est_true_responses_a, est_true_responses_b, valid_combo_idxs)
 
 			gammas[:, point_j] = model_j.x
 
@@ -101,6 +91,10 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 
 	est_gamma = np.mean(gamma_sample_means, axis=1)
 	est_gamma_covarmat = np.mean(gamma_sample_covars, axis=2) + np.cov(gamma_sample_means)
+
+	#
+	# Use the model (mainly `est_gamma`) to predict I and CI(I)
+	#
 
 	z = scipy.stats.norm.ppf(1 - alpha/2)
 
@@ -130,8 +124,30 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 	plot_heatmap('A', 'B', 'μM', 'μM', doses_a, doses_b, est_true_responses_a, est_true_responses_b,
 		doses_a_ab, doses_b_ab, observed_responses_ab, interaction_index_estimates,
 		interaction_index_ci_his, interaction_index_ci_los, model_size)
-	chart_gamma(est_gamma, est_gamma + est_gamma_stddev*z, est_gamma - est_gamma_stddev*z,
+	print_gamma_table(est_gamma, est_gamma + est_gamma_stddev*z, est_gamma - est_gamma_stddev*z,
 		model_size)
+
+def fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b, doses_a_ab, doses_b_ab,
+		est_response_covarmat_a, est_response_covarmat_b, est_true_responses_a,
+		est_true_responses_b, valid_combo_idxs)
+	noises_a = rng.multivariate_normal(np.zeros(len(doses_a)), est_response_covarmat_a)
+	noises_b = rng.multivariate_normal(np.zeros(len(doses_b)), est_response_covarmat_b)
+
+	est_theoretical_responses_ab = np.zeros((len(doses_a), len(doses_b)))
+
+	for idx_a in range(len(doses_a)):
+		for idx_b in range(len(doses_b)):
+			# Zhao 2014, Eq. 5
+			est_theoretical_responses_ab[idx_a, idx_b] = \
+				est_true_responses_a[idx_a] + est_true_responses_b[idx_b] \
+				- est_true_responses_a[idx_a]*est_true_responses_b[idx_b] \
+				+ noises_a[idx_a] + noises_b[idx_b] \
+				- noises_a[idx_a]*noises_b[idx_b]
+
+	est_theoretical_responses_ab = est_theoretical_responses_ab[valid_combo_idxs]
+
+	return scipy.optimize.least_squares(model_function, gamma_guess_0,
+		args=(doses_a_ab, doses_b_ab, observed_responses_ab, est_theoretical_responses_ab))
 
 def model_4_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
 	gamma_0, gamma_1, gamma_2, gamma_3 = gamma
