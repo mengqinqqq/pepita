@@ -74,9 +74,13 @@ def model_6_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_re
 	return residuals
 
 def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a, responses_b,
-		doses_a_ab, doses_b_ab, responses_ab, I_estimates, I_ci_his, I_ci_los, model_size):
+		doses_a_ab, doses_b_ab, responses_ab, I_estimates, I_ci_his, I_ci_los, model_size,
+		file_name_context=None):
 	label_a = f'{name_a} Concentration ({units_a})'
 	label_b = f'{name_b} Concentration ({units_a})'
+
+	if file_name_context:
+		file_name_context += '_'
 
 	dose_response_dict = {x: y for x, y in zip(doses_a, responses_a)}
 	dose_response_dict.update({x: y for x, y in zip(doses_b, responses_b)})
@@ -125,7 +129,6 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 	fig.set_size_inches(12, 8)
 	fig.set_dpi(100)
 	ax = sns.heatmap(data_values,
-		# vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data['label'], fmt='.1f', linewidths=2,
 		vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data_annotations, fmt='', linewidths=2,
 		square=True,
 		cbar_kws={
@@ -139,14 +142,14 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 	plt.title(f'{name_a} vs. {name_b}: Bliss Ixn ({model_size}-param)')
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.savefig(
-		f'{LOG_DIR}/{name_a}-{name_b}_bliss_{model_size}-param_{uniq_str}.png'
+		f'{LOG_DIR}/{name_a}-{name_b}_{file_name_context}bliss_{model_size}-param_{uniq_str}.png'
 	)
 	plt.clf()
 
 # as per formulas in Zhao 2014, https://doi.org/10.1177/1087057114521867
 def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a_ab, doses_b_ab,
 		responses_all_ab, positive_control, sampling_iterations=1000, sample_size=20, model_size=4,
-		alpha=0.05):
+		alpha=0.05, file_name_context=None):
 	positive_control_value = np.nanmean(positive_control)
 	responses_all_a = normalize(responses_all_a, maximum=100, minimum=positive_control_value)
 	responses_all_b = normalize(responses_all_b, maximum=100, minimum=positive_control_value)
@@ -234,7 +237,8 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 
 	plot_heatmap(dose_a_0.drug, dose_b_0.drug, dose_a_0.unit, dose_b_0.unit, doses_a, doses_b,
 		est_true_responses_a, est_true_responses_b, doses_a_ab, doses_b_ab, observed_responses_ab,
-		interaction_index_estimates, interaction_index_ci_his, interaction_index_ci_los, model_size)
+		interaction_index_estimates, interaction_index_ci_his, interaction_index_ci_los, model_size,
+		file_name_context=file_name_context)
 	print_gamma_table(est_gamma, est_gamma + est_gamma_stddev*z, est_gamma - est_gamma_stddev*z,
 		model_size)
 
