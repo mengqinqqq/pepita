@@ -11,13 +11,13 @@ import util
 
 LOG_DIR = f'{util.get_config("log_dir")}/interactions2'
 
-rng = np.random.default_rng()
+_rng = np.random.default_rng()
 
 def fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b, doses_a_ab, doses_b_ab,
 		est_response_covarmat_a, est_response_covarmat_b, est_true_responses_a,
-		est_true_responses_b, valid_combo_idxs)
-	noises_a = rng.multivariate_normal(np.zeros(len(doses_a)), est_response_covarmat_a)
-	noises_b = rng.multivariate_normal(np.zeros(len(doses_b)), est_response_covarmat_b)
+		est_true_responses_b, observed_responses_ab, valid_combo_idxs):
+	noises_a = _rng.multivariate_normal(np.zeros(len(doses_a)), est_response_covarmat_a)
+	noises_b = _rng.multivariate_normal(np.zeros(len(doses_b)), est_response_covarmat_b)
 
 	est_theoretical_responses_ab = np.zeros((len(doses_a), len(doses_b)))
 
@@ -136,7 +136,7 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 	ax.collections[0].colorbar.set_ticklabels(
 		['-1 (Antagonism)', '0 (Additivity)', '+1 (Synergy)'])
 	ax.invert_yaxis()
-	plt.title(f'A vs. B: Bliss Ixn ({model_size}-param)')
+	plt.title(f'{name_a} vs. {name_b}: Bliss Ixn ({model_size}-param)')
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.savefig(
 		f'{LOG_DIR}/{name_a}-{name_b}_bliss_{model_size}-param_{uniq_str}.png'
@@ -190,7 +190,7 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 		for point_j in range(sample_size):
 			model_j = fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b,
 				doses_a_ab, doses_b_ab, est_response_covarmat_a, est_response_covarmat_b,
-				est_true_responses_a, est_true_responses_b, valid_combo_idxs)
+				est_true_responses_a, est_true_responses_b, observed_responses_ab, valid_combo_idxs)
 
 			gammas[:, point_j] = model_j.x
 
@@ -213,9 +213,9 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 	interaction_index_ci_los = np.zeros((len(doses_a), len(doses_b)))
 
 	for idx_a in range(len(doses_a)):
-		dose_a = doses_a[idx_a]
+		dose_a = float(doses_a[idx_a])
 		for idx_b in range(len(doses_b)):
-			dose_b = doses_b[idx_b]
+			dose_b = float(doses_b[idx_b])
 
 			x = np.array([1, dose_a, dose_b, dose_a * dose_b, dose_a**2, dose_b**2])
 			x = x[:model_size] # trim to appropriate size
@@ -229,9 +229,12 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 			interaction_index_ci_los[idx_a, idx_b] = \
 				interaction_index_estimate - interaction_index_uncertainty
 
-	plot_heatmap('A', 'B', 'μM', 'μM', doses_a, doses_b, est_true_responses_a, est_true_responses_b,
-		doses_a_ab, doses_b_ab, observed_responses_ab, interaction_index_estimates,
-		interaction_index_ci_his, interaction_index_ci_los, model_size)
+	dose_a_0 = doses_a[0]
+	dose_b_0 = doses_b[0]
+
+	plot_heatmap(dose_a_0.drug, dose_b_0.drug, dose_a_0.unit, dose_b_0.unit, doses_a, doses_b,
+		est_true_responses_a, est_true_responses_b, doses_a_ab, doses_b_ab, observed_responses_ab,
+		interaction_index_estimates, interaction_index_ci_his, interaction_index_ci_los, model_size)
 	print_gamma_table(est_gamma, est_gamma + est_gamma_stddev*z, est_gamma - est_gamma_stddev*z,
 		model_size)
 
