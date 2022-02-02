@@ -230,7 +230,7 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 
 	z = scipy.stats.norm.ppf(1 - alpha/2)
 
-	est_gamma_stddev = np.sqrt(np.diagonal(np.mean(gamma_sample_covars, axis=2))) # use est_gamma_covarmat
+	est_gamma_stddev = np.sqrt(np.diagonal(est_gamma_covarmat))
 
 	interaction_index_estimates = []
 	interaction_index_ci_his = []
