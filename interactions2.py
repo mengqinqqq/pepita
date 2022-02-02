@@ -15,22 +15,29 @@ _rng = np.random.default_rng()
 
 def fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b, doses_a_ab, doses_b_ab,
 		est_response_covarmat_a, est_response_covarmat_b, est_true_responses_a,
-		est_true_responses_b, observed_responses_ab, valid_combo_idxs):
-	noises_a = _rng.multivariate_normal(np.zeros(len(doses_a)), est_response_covarmat_a)
-	noises_b = _rng.multivariate_normal(np.zeros(len(doses_b)), est_response_covarmat_b)
+		est_true_responses_b, observed_responses_ab):
+	noises_a = dict(zip(doses_a,
+		_rng.multivariate_normal(np.zeros(len(doses_a)), est_response_covarmat_a)))
+	noises_b = dict(zip(doses_b,
+		_rng.multivariate_normal(np.zeros(len(doses_b)), est_response_covarmat_b)))
 
-	est_theoretical_responses_ab = np.zeros((len(doses_a), len(doses_b)))
+	est_true_responses_a = dict(zip(doses_a, est_true_responses_a))
+	est_true_responses_b = dict(zip(doses_b, est_true_responses_b))
 
-	for idx_a in range(len(doses_a)):
-		for idx_b in range(len(doses_b)):
-			# Zhao 2014, Eq. 5
-			est_theoretical_responses_ab[idx_a, idx_b] = \
-				est_true_responses_a[idx_a] + est_true_responses_b[idx_b] \
-				- est_true_responses_a[idx_a]*est_true_responses_b[idx_b] \
-				+ noises_a[idx_a] + noises_b[idx_b] \
-				- noises_a[idx_a]*noises_b[idx_b]
+	est_theoretical_responses_ab = []
 
-	est_theoretical_responses_ab = est_theoretical_responses_ab[valid_combo_idxs]
+	for dose_a, dose_b in zip(doses_a_ab, doses_b_ab):
+		# Zhao 2014, Eq. 5
+		est_theoretical_responses_ab.append(
+			est_true_responses_a[dose_a] + est_true_responses_b[dose_b] \
+			- est_true_responses_a[dose_a]*est_true_responses_b[dose_b] \
+			+ noises_a[dose_a] + noises_b[dose_b] \
+			- noises_a[dose_a]*noises_b[dose_b])
+
+	doses_a_ab = np.array([float(dose_a) for dose_a in doses_a_ab])
+	doses_b_ab = np.array([float(dose_b) for dose_b in doses_b_ab])
+
+	est_theoretical_responses_ab = np.array(est_theoretical_responses_ab)
 
 	return scipy.optimize.least_squares(model_function, gamma_guess_0,
 		args=(doses_a_ab, doses_b_ab, observed_responses_ab, est_theoretical_responses_ab))
@@ -101,8 +108,7 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 	data_dict['CI(I, hi)'] = np.append(data_dict['CI(I, hi)'], [np.nan for y in responses_b])
 
 	for dose_a, dose_b, response_ab, I_est, I_ci_lower, I_ci_upper in zip(
-			doses_a_ab.flatten(), doses_b_ab.flatten(), responses_ab.flatten(),
-			I_estimates.flatten(), I_ci_los.flatten(), I_ci_his.flatten()):
+			doses_a_ab, doses_b_ab, responses_ab, I_estimates, I_ci_los, I_ci_his):
 		data_dict[label_a] = np.append(data_dict[label_a], [float(dose_a)])
 		data_dict[label_b] = np.append(data_dict[label_b], [float(dose_b)])
 
@@ -184,7 +190,7 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 	with warnings.catch_warnings():
 		warnings.simplefilter('ignore', RuntimeWarning)
 		# feels like the error/variance in responses_all_ab should be taken into account?
-		observed_responses_ab = np.nanmean(responses_all_ab, axis=2)
+		observed_responses_ab = np.nanmean(responses_all_ab, axis=1)
 	valid_combo_idxs = ~np.isnan(observed_responses_ab)
 
 	doses_a_ab = doses_a_ab[valid_combo_idxs]
@@ -208,7 +214,7 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 		for point_j in range(sample_size):
 			model_j = fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b,
 				doses_a_ab, doses_b_ab, est_response_covarmat_a, est_response_covarmat_b,
-				est_true_responses_a, est_true_responses_b, observed_responses_ab, valid_combo_idxs)
+				est_true_responses_a, est_true_responses_b, observed_responses_ab)
 
 			gammas[:, point_j] = model_j.x
 
@@ -224,28 +230,25 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 
 	z = scipy.stats.norm.ppf(1 - alpha/2)
 
-	est_gamma_stddev = np.sqrt(np.diagonal(np.mean(gamma_sample_covars, axis=2)))
+	est_gamma_stddev = np.sqrt(np.diagonal(np.mean(gamma_sample_covars, axis=2))) # use est_gamma_covarmat
 
-	interaction_index_estimates = np.zeros((len(doses_a), len(doses_b)))
-	interaction_index_ci_his = np.zeros((len(doses_a), len(doses_b)))
-	interaction_index_ci_los = np.zeros((len(doses_a), len(doses_b)))
+	interaction_index_estimates = []
+	interaction_index_ci_his = []
+	interaction_index_ci_los = []
 
-	for idx_a in range(len(doses_a)):
-		dose_a = float(doses_a[idx_a])
-		for idx_b in range(len(doses_b)):
-			dose_b = float(doses_b[idx_b])
+	for dose_a, dose_b in zip(doses_a_ab, doses_b_ab):
+		dose_a, dose_b = float(dose_a), float(dose_b)
+		x = np.array([1, dose_a, dose_b, dose_a * dose_b, dose_a**2, dose_b**2])
+		x = x[:model_size] # trim to appropriate size
 
-			x = np.array([1, dose_a, dose_b, dose_a * dose_b, dose_a**2, dose_b**2])
-			x = x[:model_size] # trim to appropriate size
-
-			interaction_index_estimate = np.dot(x, est_gamma)
-			interaction_index_uncertainty = \
-				z * np.sqrt(x @ est_gamma_covarmat @ x) # @ is matrix multiplication
-			interaction_index_estimates[idx_a, idx_b] = interaction_index_estimate
-			interaction_index_ci_his[idx_a, idx_b] = \
-				interaction_index_estimate + interaction_index_uncertainty
-			interaction_index_ci_los[idx_a, idx_b] = \
-				interaction_index_estimate - interaction_index_uncertainty
+		interaction_index_estimate = np.dot(x, est_gamma)
+		interaction_index_uncertainty = \
+			z * np.sqrt(x @ est_gamma_covarmat @ x) # @ is matrix multiplication
+		interaction_index_estimates.append(interaction_index_estimate)
+		interaction_index_ci_his.append(
+			interaction_index_estimate + interaction_index_uncertainty)
+		interaction_index_ci_los.append(
+			interaction_index_estimate - interaction_index_uncertainty)
 
 	dose_a_0 = doses_a[0]
 	dose_b_0 = doses_b[0]
@@ -284,42 +287,28 @@ if __name__ == '__main__':
 		[29.0, 14.0, 15.0, 22.0, 30.0, 30.0, 20.0],
 	])
 	doses_a_ab = np.array([
-		[22.5, 45, 90, 180],
-		[22.5, 45, 90, 180],
-		[22.5, 45, 90, 180],
-		[22.5, 45, 90, 180],
+		22.5, 45, 90, 180, 22.5, 45, 90, 180, 22.5, 45, 90, 180, 22.5, 45, 90, 180
 	])
 	doses_b_ab = np.array([
-		[1.7, 1.7, 1.7, 1.7],
-		[3.4, 3.4, 3.4, 3.4],
-		[6.8, 6.8, 6.8, 6.8],
-		[13.6, 13.6, 13.6, 13.6],
+		1.7, 1.7, 1.7, 1.7, 3.4, 3.4, 3.4, 3.4, 6.8, 6.8, 6.8, 6.8, 13.6, 13.6, 13.6, 13.6
 	])
 	responses_all_ab = np.array([
-		[
-			[89.0, 115.0, 86.0, 74.0],
-			[66.0, 92.0, 48.0, 59.0],
-			[25.0, 46.0, 63.0, 47.0],
-			[47.0, 20.0, 19.0, 24.0],
-		],
-		[
-			[55.0, 86.0, 40.0, 50.0],
-			[23.0, 64.0, 63.0, 16.0],
-			[37.0, 45.0, 67.0, 34.0],
-			[15.0, 20.0, 20.0, 29.0],
-		],
-		[
-			[50.0, 41.0, 58.0, 11.0],
-			[25.0, 14.0, 25.0, 27.0],
-			[56.0, 50.0, 26.0, 29.0],
-			[np.nan, np.nan, np.nan, np.nan],
-		],
-		[
-			[23.0, 28.0, 38.0, 39.0],
-			[28.0, 31.0, 8.0, 7.0],
-			[13.0, 17.0, 42.0, 11.0],
-			[np.nan, np.nan, np.nan, np.nan],
-		]
+		[89.0, 115.0, 86.0, 74.0],
+		[66.0, 92.0, 48.0, 59.0],
+		[25.0, 46.0, 63.0, 47.0],
+		[47.0, 20.0, 19.0, 24.0],
+		[55.0, 86.0, 40.0, 50.0],
+		[23.0, 64.0, 63.0, 16.0],
+		[37.0, 45.0, 67.0, 34.0],
+		[15.0, 20.0, 20.0, 29.0],
+		[50.0, 41.0, 58.0, 11.0],
+		[25.0, 14.0, 25.0, 27.0],
+		[56.0, 50.0, 26.0, 29.0],
+		[np.nan, np.nan, np.nan, np.nan],
+		[23.0, 28.0, 38.0, 39.0],
+		[28.0, 31.0, 8.0, 7.0],
+		[13.0, 17.0, 42.0, 11.0],
+		[np.nan, np.nan, np.nan, np.nan],
 	])
 	positive_control = np.array([10.0, 6.0, 6.0, 5.0])
 
