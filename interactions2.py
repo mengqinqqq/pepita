@@ -266,7 +266,7 @@ def row2label(row):
 	if np.isnan(row['I']):
 		return ''
 	else:
-		return 'I = {:.2f}\nM(I) = {:.2f}\nCI =  \n  ({:.2f}, {:.2f})\n{}'.format(
+		return 'I = {:.2f}\nM(I) = {:.2f}\n({:.2f}, {:.2f})\n{}'.format(
 			row['I'], row['M(I)'], row['CI(I, lo)'], row['CI(I, hi)'], row['significance'])
 
 if __name__ == '__main__':
