@@ -146,6 +146,21 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 	)
 	plt.clf()
 
+def print_mean(doses_a, doses_b, responses_a, responses_b, doses_a_ab, doses_b_ab, responses_ab):
+	dose_response_dict = {x: y for x, y in zip(doses_a, responses_a)}
+	dose_response_dict.update({x: y for x, y in zip(doses_b, responses_b)})
+
+	interaction_scores = []
+
+	for dose_a, dose_b, response_ab in zip(doses_a_ab, doses_b_ab, responses_ab):
+		response_a = dose_response_dict[dose_a]
+		response_b = dose_response_dict[dose_b]
+		response_ab_expected = response_a + response_b - response_a*response_b
+
+		interaction_scores.append(response_ab - response_ab_expected)
+
+	print('Mean interaction score:', np.nanmean(interaction_scores))
+
 # as per formulas in Zhao 2014, https://doi.org/10.1177/1087057114521867
 def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a_ab, doses_b_ab,
 		responses_all_ab, positive_control, sampling_iterations=1000, sample_size=20, model_size=4,
@@ -241,6 +256,8 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 		file_name_context=file_name_context)
 	print_gamma_table(est_gamma, est_gamma + est_gamma_stddev*z, est_gamma - est_gamma_stddev*z,
 		model_size)
+	print_mean(doses_a, doses_b, est_true_responses_a, est_true_responses_b, doses_a_ab, doses_b_ab,
+		observed_responses_ab)
 
 def row2label(row):
 	if np.isnan(row['I']):
