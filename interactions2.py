@@ -42,29 +42,6 @@ def fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b, doses_
 	return scipy.optimize.least_squares(model_function, gamma_guess_0,
 		args=(doses_a_ab, doses_b_ab, observed_responses_ab, est_theoretical_responses_ab))
 
-# convert values to % inhibition
-def normalize(values, maximum=100, minimum=0):
-	return 1 - (values - minimum) / (maximum - minimum)
-
-def print_gamma_table(gammas, gamma_ci_his, gamma_ci_los, model_size):
-	parameters = ['γ₀', 'γ₁', 'γ₂', 'γ₃', 'γ₄', 'γ₅']
-	parameters = parameters[:model_size] # trim to appropriate size
-	variables = ['', 'a', 'b', 'ab', 'a²', 'b²']
-	variables = variables[:model_size] # trim to appropriate size
-
-	print('Model: I =', ' + '.join([param + var for param, var in zip(parameters, variables)]))
-
-	data = pd.DataFrame({
-		'Variable': variables,
-		'Parameter': parameters,
-		'Value': gammas,
-		'CI (high)': gamma_ci_his,
-		'CI (low)': gamma_ci_los,
-		'Significant': [ci_lo * ci_hi > 0 for ci_lo, ci_hi in zip(gamma_ci_los, gamma_ci_his)]
-	})
-
-	print(data.transpose())
-
 def model_4_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
 	gamma_0, gamma_1, gamma_2, gamma_3 = gamma
 
@@ -80,6 +57,10 @@ def model_6_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_re
 		+ gamma_4*doses_a**2 + gamma_5*doses_b**2 - observed_responses_ab + theoretical_responses_ab
 
 	return residuals
+
+# convert values to % inhibition
+def normalize(values, maximum=100, minimum=0):
+	return 1 - (values - minimum) / (maximum - minimum)
 
 def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a, responses_b,
 		doses_a_ab, doses_b_ab, responses_ab, I_estimates, I_ci_his, I_ci_los, model_size,
@@ -152,6 +133,25 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 		f'{LOG_DIR}/{name_a}-{name_b}_{file_name_context}bliss_{model_size}-param_{uniq_str}.png'
 	)
 	plt.clf()
+
+def print_gamma_table(gammas, gamma_ci_his, gamma_ci_los, model_size):
+	parameters = ['γ₀', 'γ₁', 'γ₂', 'γ₃', 'γ₄', 'γ₅']
+	parameters = parameters[:model_size] # trim to appropriate size
+	variables = ['', 'a', 'b', 'ab', 'a²', 'b²']
+	variables = variables[:model_size] # trim to appropriate size
+
+	print('Model: I =', ' + '.join([param + var for param, var in zip(parameters, variables)]))
+
+	data = pd.DataFrame({
+		'Variable': variables,
+		'Parameter': parameters,
+		'Value': gammas,
+		'CI (high)': gamma_ci_his,
+		'CI (low)': gamma_ci_los,
+		'Significant': [ci_lo * ci_hi > 0 for ci_lo, ci_hi in zip(gamma_ci_los, gamma_ci_his)]
+	})
+
+	print(data.transpose())
 
 def print_mean(doses_a, doses_b, responses_a, responses_b, doses_a_ab, doses_b_ab, responses_ab):
 	dose_response_dict = {x: y for x, y in zip(doses_a, responses_a)}
