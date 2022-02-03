@@ -42,8 +42,9 @@ def fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b, doses_
 	return scipy.optimize.least_squares(model_function, gamma_guess_0,
 		args=(doses_a_ab, doses_b_ab, observed_responses_ab, est_theoretical_responses_ab))
 
+# convert values to % inhibition
 def normalize(values, maximum=100, minimum=0):
-	return (values - minimum) / (maximum - minimum)
+	return 1 - (values - minimum) / (maximum - minimum)
 
 def print_gamma_table(gammas, gamma_ci_his, gamma_ci_los, model_size):
 	parameters = ['γ₀', 'γ₁', 'γ₂', 'γ₃', 'γ₄', 'γ₅']
