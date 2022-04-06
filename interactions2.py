@@ -42,6 +42,13 @@ def fit_model_with_noise(model_function, gamma_guess_0, doses_a, doses_b, doses_
 	return scipy.optimize.least_squares(model_function, gamma_guess_0,
 		args=(doses_a_ab, doses_b_ab, observed_responses_ab, est_theoretical_responses_ab))
 
+def model_1_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
+	gamma_0 = gamma[0]
+
+	residuals = gamma_0 - observed_responses_ab + theoretical_responses_ab
+
+	return residuals
+
 def model_4_param(gamma, doses_a, doses_b, observed_responses_ab, theoretical_responses_ab):
 	gamma_0, gamma_1, gamma_2, gamma_3 = gamma
 
@@ -204,6 +211,9 @@ def response_surface(doses_a, responses_all_a, doses_b, responses_all_b, doses_a
 	elif model_size == 6:
 		model_function = model_6_param
 		gamma_guess_0 = [0.5, 0, 0, 0, 0, 0]
+	elif model_size == 1:
+		model_function = model_1_param
+		gamma_guess_0 = [0]
 	else:
 		raise ValueException(f'Model with {model_size} parameters is not defined')
 
@@ -313,6 +323,9 @@ if __name__ == '__main__':
 	])
 	positive_control = np.array([10.0, 6.0, 6.0, 5.0])
 
+	response_surface(
+		doses_a, responses_all_a, doses_b, responses_all_b, doses_a_ab, doses_b_ab,
+		responses_all_ab, positive_control, model_size=1)
 	response_surface(
 		doses_a, responses_all_a, doses_b, responses_all_b, doses_a_ab, doses_b_ab,
 		responses_all_ab, positive_control, model_size=4)
