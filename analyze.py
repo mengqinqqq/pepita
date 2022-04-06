@@ -192,15 +192,15 @@ def set_arguments(parser):
 	parser.add_argument('-pc', '--plate-control',
 		default=['B'],
 		nargs='*',
-		help='Labels to treat as the control condition in the plate schematic. These wells are '
+		help=('Labels to treat as the control condition in the plate schematic. These wells are '
 			'used to normalize all values in the plate for more interpretable results. Any number '
-			'of values may be passed.')
+			'of values may be passed.'))
 	parser.add_argument('-pi', '--plate-ignore',
 		default=[],
 		nargs='*',
-		help='Labels to ignore (treat as null/empty) in the plate schematic. Empty cells will '
+		help=('Labels to ignore (treat as null/empty) in the plate schematic. Empty cells will '
 			'automatically be ignored, but any other null values (e.g. "[empty]") must be '
-			'specified here. Any number of values may be passed.')
+			'specified here. Any number of values may be passed.'))
 
 	parser.add_argument('-g', '--group-regex',
 		default='.*',

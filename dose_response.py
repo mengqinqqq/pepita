@@ -135,7 +135,7 @@ class Model:
 
 	# pct_survival = (f(x) - min) / (max - min)
 	def get_pct_survival(self, xs=None, ys=None):
-		if not xs and not ys:
+		if xs is None and ys is None:
 			raise ValueError('One of xs or ys is required')
 
 		max_ = self.E_0
