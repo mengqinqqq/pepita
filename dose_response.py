@@ -37,17 +37,27 @@ class Model:
 	def __repr__(self):
 		return "{}({})".format(self.__class__.__name__, self.cocktail)
 
-	def chart(self, close=True, color='darkgrey', datapoints=None, label=True, name=None):
+	def chart(self, close=True, color='darkgrey', datapoints=None, label=True, name=None,
+			scale=None):
+		if scale is None:
+			scale = [self.E_max, self.E_0]
+
 		sns.set_theme(style='darkgrid')
 
-		plt.scatter(self.xs, self.ys, color='black', marker='_', s=256)
+		ys = [(value - scale[0]) / (scale[1] - scale[0]) for value in self.ys]
+
+		plt.scatter(self.xs, ys, color='black', marker='_', s=256)
 
 		ax = plt.gca()
-		ax.set_ylim(bottom=0)
+		# ax.set_ylim(bottom=0)
+		ax.yaxis.set_major_formatter(PercentFormatter(1))
 
 		if datapoints:
+			scores = [value for values in datapoints.values() for value in values]
+			scores = [(value - scale[0]) / (scale[1] - scale[0]) for value in scores]
+
 			data = pd.DataFrame({
-				'brightness': [value for values in datapoints.values() for value in values],
+				'brightness': scores,
 				'concentration': [
 					float(soln) for soln, values in datapoints.items() for _ in values
 				],
@@ -58,16 +68,16 @@ class Model:
 
 		if self.b:
 			line_xs = np.linspace(0, float(max(self.xs)), 100)
-			line_ys = self.get_ys(line_xs)
+			line_ys = [(value - scale[0]) / (scale[1] - scale[0]) for value in self.get_ys(line_xs)]
 			sns.lineplot(x=line_xs, y=line_ys, label='Model')
 
-			plt.scatter(self.effective_concentration(0.5), 4, color='black', label='EC50', marker='|',
-				s=128)
+			plt.scatter(self.effective_concentration(0.5), 0.04, color='black', label='EC50',
+				marker='|', s=128)
 
 		if label:
 			plt.title(f'{self.get_condition()} Dose-Response Curve')
 			plt.xlabel(f'{self.get_condition()} Dose (μM)')
-			plt.ylabel('Pipeline Score')
+			plt.ylabel('Remaining Brightness')
 			plt.legend()
 
 		if close:

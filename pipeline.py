@@ -12,7 +12,7 @@ import util
 
 def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[], debug=0,
 		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], plate_info=None,
-		silent=False):
+		plate_positive_control=[], silent=False):
 	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
 		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
 
@@ -30,6 +30,26 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[]
 	control_drugs = [util.Cocktail(util.Dose(control).drug) for control in plate_control]
 	models = {}
 
+	# positive control
+
+	positive_control_drugs = [
+		util.Cocktail(util.Dose(condition).drug) for condition in plate_positive_control]
+	positive_control_solutions = [
+		solution for drug in positive_control_drugs for solution in drug_conditions[drug]]
+	positive_control_scores = [
+		result for solution in positive_control_solutions for result in results[solution.string]]
+	with warnings.catch_warnings():
+		warnings.simplefilter('ignore', RuntimeWarning)
+		positive_control_value = np.nanmean(positive_control_scores)
+
+	if np.isnan(positive_control_value):
+		print(('WARNING: No positive control included. Using minimum calculated value as '
+			'positive control'))
+		positive_control_value = np.nanmin(
+			[value for condition, values in results.items() for value in values])
+
+	# generate models, dose-response charts
+
 	for cocktail, conditions in drug_conditions.items():
 		if cocktail.drugs == ('Control',):
 			continue
@@ -45,9 +65,12 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[]
 				summary_score = np.nanmedian(results[solution.string])
 				summary_scores.append(summary_score)
 		models[cocktail] = dose_response.Model(
-			conditions, summary_scores, cocktail, E_max=dose_response.neo_E_max())
+			conditions, summary_scores, cocktail, E_max=positive_control_value)
 		models[cocktail].chart(results[solution.string], datapoints=cocktail_scores,
-			name=plate_info + '_' + str(cocktail) if plate_info else None)
+			name=plate_info + '_' + str(cocktail) if plate_info else None,
+			scale=[positive_control_value, 100])
+
+	# print EC values
 
 	for model in models.values():
 		for ec_value in (50, 75, 90):
@@ -55,6 +78,8 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[]
 			if not np.isnan(concentn):
 				print((f'{model.get_condition()} '
 					f'EC_{ec_value}={concentn:.2f}{model.get_x_units()}'))
+
+	# analyze combinations
 
 	models_combo = [model for model in models.values() if model.combo]
 
@@ -130,6 +155,13 @@ if __name__ == '__main__':
 			'a separate argument, each delimited by an equals sign. For instance, ABC50 might be '
 			'an abbreviation for the EC50 of drug ABC, in which case the concrete concentration '
 			'can be supplied like "ABC50=ABC 1mM" (make sure to quote, or escape spaces).'))
+
+	parser.add_argument('-ppc', '--plate-positive-control',
+		default=[],
+		nargs='*',
+		help=('Labels to treat as the positive control conditions in the plate schematic (i.e. '
+			'conditions showing maximum effect). These wells are used to normalize all values in '
+			'the plate for more interpretable results. Any number of values may be passed.'))
 
 	parser.add_argument('--plate-info',
 		default=None,
