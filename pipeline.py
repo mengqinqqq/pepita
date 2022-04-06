@@ -11,7 +11,8 @@ import dose_response
 import util
 
 def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[], debug=0,
-		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], silent=False):
+		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], plate_info=None,
+		silent=False):
 	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
 		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
 
@@ -45,7 +46,8 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[]
 				summary_scores.append(summary_score)
 		models[cocktail] = dose_response.Model(
 			conditions, summary_scores, cocktail, E_max=dose_response.neo_E_max())
-		models[cocktail].chart(results[solution.string], datapoints=cocktail_scores)
+		models[cocktail].chart(results[solution.string], datapoints=cocktail_scores,
+			name=plate_info + '_' + str(cocktail) if plate_info else None)
 
 	for model in models.values():
 		for ec_value in (50, 75, 90):
@@ -90,8 +92,10 @@ def main(imagefiles, cap=150, chartfile=None, checkerboard=False, conversions=[]
 		model_combo = models_combo[0]
 		model_a = models[util.Cocktail(model_combo.cocktail.drugs[0])]
 		model_b = models[util.Cocktail(model_combo.cocktail.drugs[1])]
-		dose_response.analyze_checkerboard(model_a, model_b, models_combo)
-		dose_response.chart_checkerboard(model_a, model_b, models_combo)
+		dose_response.analyze_checkerboard(model_a, model_b, models_combo,
+			file_name_context=plate_info)
+		dose_response.chart_checkerboard(model_a, model_b, models_combo,
+			file_name_context=plate_info)
 
 def _key_value_pair(argument, delimiter='='):
 	return tuple(argument.split(delimiter))
@@ -126,6 +130,11 @@ if __name__ == '__main__':
 			'a separate argument, each delimited by an equals sign. For instance, ABC50 might be '
 			'an abbreviation for the EC50 of drug ABC, in which case the concrete concentration '
 			'can be supplied like "ABC50=ABC 1mM" (make sure to quote, or escape spaces).'))
+
+	parser.add_argument('--plate-info',
+		default=None,
+		help=('Any information identifying the plate(s) being analyzed that should be passed along '
+			'to files created by this process.'))
 
 	analyze.set_arguments(parser)
 

@@ -159,7 +159,14 @@ class Model:
 	def __repr__(self):
 		return str(self.__dict__)
 
-def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation'):
+def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
+		file_name_context=None):
+	file_name_context1 = ''
+	file_name_context2 = ''
+	if file_name_context:
+		file_name_context1 = '(' + file_name_context + ')'
+		file_name_context2 = file_name_context + '_'
+
 	if method == 'interpolation':
 		fig = plt.figure()
 		fig.set_size_inches(12, 8)
@@ -277,10 +284,13 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation')
 		ax = sns.heatmap(data,
 			cmap='vlag', center=0, annot=True, fmt='.2f', linewidths=2, square=True)
 		ax.invert_yaxis()
-		plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Bliss Ixn')
+		plt.title(
+			f'{model_a.get_condition()} vs. {model_b.get_condition()}: Bliss Ixn ' +
+				f'{file_name_context1}')
 		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 		plt.savefig(
-			f'{LOG_DIR}/{model_a.get_condition()}-{model_b.get_condition()}_bliss_{uniq_str}.png'
+			f'{LOG_DIR}/{model_a.get_condition()}-{model_b.get_condition()}_{file_name_context2}' +
+				f'bliss_{uniq_str}.png'
 		)
 		plt.clf()
 	elif method == 'Loewe':
@@ -371,7 +381,13 @@ def analyze_diamond(model_a, model_b, model_combo):
 	return (os.path.join(LOG_DIR, f'{model_a.cocktail}+{model_b.cocktail}_isoboles_{uniq_str}.png'),\
 		max_x, max_y)
 
-def chart_checkerboard(model_a, model_b, models_combo):
+def chart_checkerboard(model_a, model_b, models_combo, file_name_context=None):
+	file_name_context1 = ''
+	file_name_context2 = ''
+	if file_name_context:
+		file_name_context1 = '(' + file_name_context + ')'
+		file_name_context2 = file_name_context + '_'
+
 	label_a = f'{model_a.cocktail} Concentration ({model_a.get_x_units()})'
 	label_b = f'{model_b.cocktail} Concentration ({model_b.get_x_units()})'
 
@@ -407,10 +423,11 @@ def chart_checkerboard(model_a, model_b, models_combo):
 			'label': 'Remaining Hair-Cell Brightness', 'ticks': [0, 1]
 		})
 	ax.invert_yaxis()
-	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Checkerboard')
+	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()} {file_name_context1}')
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.savefig(
-		f'{LOG_DIR}/{model_a.get_condition()}-{model_b.get_condition()}_checkerboard_{uniq_str}.png'
+		f'{LOG_DIR}/{model_a.get_condition()}-{model_b.get_condition()}_{file_name_context2}' +
+			f'checkerboard_{uniq_str}.png'
 	)
 	plt.clf()
 
