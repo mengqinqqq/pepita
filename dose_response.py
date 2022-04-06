@@ -687,7 +687,7 @@ def _get_model(filename, debug=1):
 			xs.append(util.Solution(x))
 			ys.append(float(y))
 
-	model = Model(xs, ys, xs[-1].get_cocktail())
+	model = Model(xs, ys, xs[-1].get_cocktail(), E_max=np.nanmin(ys))
 	if debug:
 		model.chart()
 	return model
