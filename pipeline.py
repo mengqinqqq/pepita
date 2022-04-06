@@ -3,6 +3,7 @@ import json
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+import seaborn as sns
 import sys
 import warnings
 
@@ -118,6 +119,9 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		model_combo_0 = models_combo[0]
 		model_a = models[util.Cocktail(model_combo_0.cocktail.drugs[0])]
 		model_b = models[util.Cocktail(model_combo_0.cocktail.drugs[1])]
+
+		# sns.set_context('talk')
+
 		dose_response.analyze_checkerboard(model_a, model_b, models_combo, method='Bliss',
 			file_name_context=plate_info)
 		dose_response.chart_checkerboard(model_a, model_b, models_combo,

@@ -307,6 +307,8 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 			cbar_kws={
 				'extend': 'both',
 				'label': 'Excess Over Bliss',
+				# 'location': 'bottom',
+				# 'shrink': 0.5,
 				'ticks': [-1, 0, 1],
 			})
 		ax.collections[0].colorbar.set_ticklabels(
@@ -448,7 +450,9 @@ def chart_checkerboard(model_a, model_b, models_combo, file_name_context=None):
 		vmin=0, vmax=1, cmap='mako', annot=True, fmt='.0%', linewidths=2, square=True,
 		cbar_kws={
 			'format': PercentFormatter(xmax=1, decimals=0),
-			'label': 'Remaining Hair-Cell Brightness', 'ticks': [0, 1]
+			'label': 'Remaining Hair-Cell Brightness', 'ticks': [0, 1],
+			# 'location': 'bottom',
+			# 'shrink': 0.5,
 		})
 	ax.invert_yaxis()
 	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()} {file_name_context1}')

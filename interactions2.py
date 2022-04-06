@@ -129,6 +129,7 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 		cbar_kws={
 			'extend': 'both',
 			'label': 'Excess Over Bliss',
+			# 'location': 'bottom',
 			'ticks': [-1, 0, 1],
 		})
 	ax.collections[0].colorbar.set_ticklabels(
