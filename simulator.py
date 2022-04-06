@@ -21,8 +21,64 @@ def add_percent_noise(n, coefficient_variance=0.05):
 	standard_dev = n * coefficient_variance
 	return random.gauss(n, standard_dev)
 
+def bliss_vs_loewe():
+	cocktail_a = util.Cocktail('A')
+	cocktail_b = util.Cocktail('B')
+	cocktail_combo = util.Cocktail(('A', 'B'))
+
+	df = pd.DataFrame(columns=[
+		'simulation', 'doseA', 'doseB', 'responseA', 'responseB', 'responseCombo', 'EOB', 'FIC'
+	])
+
+	for i in range(1000):
+		model_a = dose_response.Model([], [], cocktail_a)
+		model_a.b = random.uniform(0.5, 3)
+		model_a.c = random.randint(6, 40)
+		model_a.e = random.randint(5, 500)
+
+		model_b = dose_response.Model([], [], cocktail_b)
+		model_b.b = random.uniform(0.5, 3)
+		model_b.c = random.randint(6, 40)
+		model_b.e = random.randint(5, 500)
+
+		ec50_a = model_a.effective_concentration(0.5)
+		ec50_b = model_b.effective_concentration(0.5)
+
+		model_a.xs = np.array([ec50_a/4, ec50_a/2, ec50_a, 2 * ec50_a])
+		model_b.xs = np.array([ec50_b/4, ec50_b/2, ec50_b, 2 * ec50_b])
+
+		model_a.ys = model_a.get_ys(model_a.xs)
+		model_b.ys = model_b.get_ys(model_b.xs)
+
+		model_combo = dose_response.Model(model_a.xs + model_b.xs, [], cocktail_combo)
+		model_combo.b = random.uniform(0.5, 3)
+		model_combo.c = random.randint(6, 40)
+		model_combo.e = random.randint(5, 500)
+		model_combo.ys = model_combo.get_ys(model_combo.xs)
+
+		for a_x, b_x, combo_x, combo_y in zip(
+				model_a.xs, model_b.xs, model_combo.xs, model_combo.ys):
+			model_combo.cocktail.ratio = util.Ratio(a_x, b_x)
+			eob = dose_response.get_bliss_ixn(combo_x, combo_y, model_a, model_b, model_combo)
+			fic = dose_response.get_combo_FIC(1 - model_combo.get_pct_survival(xs=combo_x), model_a,
+				model_b, model_combo, model_combo.cocktail.ratio)
+
+			df = df.append({
+				'simulation': i,
+				'doseA': a_x,
+				'doseB': b_x,
+				'responseA': model_a.get_pct_survival(xs=a_x),
+				'responseB': model_b.get_pct_survival(xs=b_x),
+				'responseCombo': model_combo.get_pct_survival(xs=combo_x),
+				'EOB': eob,
+				'FIC': fic
+			}, ignore_index=True)
+
+	df.to_csv('bliss_vs_loewe.csv', index=False)
+
 def main():
-	simulate_noise()
+	# simulate_noise()
+	bliss_vs_loewe()
 
 def simulate_noise():
 	cocktail = util.Cocktail('Test1')
