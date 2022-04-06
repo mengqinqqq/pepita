@@ -187,6 +187,13 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 		ax = fig.add_subplot(1, 1, 1)
 		ax.margins(0.006)
 
+		swapped = False
+
+		if model_a.c < model_b.c:
+			model_a, model_b = model_b, model_a
+			models_combo = [model_combo.pivot() for model_combo in models_combo]
+			swapped = True
+
 		effect_level = models_combo[0].cocktail.effect / 100
 		effect_pretty = f'{(effect_level * 100):.0f}'
 		ec_a = model_a.effective_concentration(effect_level)
@@ -530,11 +537,30 @@ def get_bliss_ixn(x, y, model_a, model_b, model_combo):
 	if float(x) == 0:
 		return np.nan
 
-	concentration_a = x * model_combo.cocktail.ratio.to_proportion()
-	concentration_b = x * model_combo.cocktail.ratio.reciprocal().to_proportion()
+	# concentration_a = x * model_combo.cocktail.ratio.to_proportion()
+	# concentration_b = x * model_combo.cocktail.ratio.reciprocal().to_proportion()
+	x_doses = {dose.drug: dose for dose in x.doses}
+	dose_a = x_doses[model_a.cocktail.drugs[0]]
+	dose_b = x_doses[model_b.cocktail.drugs[0]]
 
-	e_inhibition_a = 1 - model_a.get_pct_survival(xs=concentration_a)
-	e_inhibition_b = 1 - model_b.get_pct_survival(xs=concentration_b)
+	model_a_doses = [solution.doses[0] for solution in model_a.xs]
+	model_b_doses = [solution.doses[0] for solution in model_b.xs]
+
+	if dose_a in model_a_doses:
+		pct_survival = (model_a.ys[model_a_doses.index(dose_a)] - model_a.get_absolute_E_max()) / \
+			(model_a.E_0 - model_a.get_absolute_E_max())
+		e_inhibition_a = 1 - pct_survival
+	else:
+		print(f'WARNING: {dose_a} not found in {model_a}. Using modeled response.')
+		e_inhibition_a = 1 - model_a.get_pct_survival(xs=float(dose_a))
+
+	if dose_b in model_b_doses:
+		pct_survival = (model_b.ys[model_b_doses.index(dose_b)] - model_a.get_absolute_E_max()) / \
+			(model_b.E_0 - model_b.get_absolute_E_max())
+		e_inhibition_b = 1 - pct_survival
+	else:
+		print(f'WARNING: {dose_b} not found in {model_b}. Using modeled response.')
+		e_inhibition_b = 1 - model_b.get_pct_survival(xs=float(dose_b))
 
 	fract_inhib_theor = e_inhibition_a + e_inhibition_b - e_inhibition_a * e_inhibition_b
 	fract_inhib_observed = 1 - model_combo.get_pct_survival(ys=y)

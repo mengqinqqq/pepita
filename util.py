@@ -133,6 +133,7 @@ class Ratio:
 
 class Solution:
 	def __init__(self, string, conversions=[]):
+		self.conversions = conversions
 		self.string = string
 		dose_strings = string.split(' + ')
 		self.doses = [Dose(string, conversions) for string in dose_strings]
@@ -189,6 +190,10 @@ class Solution:
 		if len(self.doses) == 2:
 			return Ratio(self.doses[0].quantity, self.doses[1].quantity)
 		raise ValueError(f'This solution {self.doses} does not have a valid dose ratio')
+
+	def reverse(self):
+		doses = self.doses[::-1]
+		return Solution(' + '.join([str(dose) for dose in doses]), self.conversions)
 
 def equalsish(val1, val2, delta=0.001):
 	return abs(val1 - val2) < delta
