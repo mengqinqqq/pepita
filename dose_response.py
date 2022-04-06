@@ -292,7 +292,15 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 		fig.set_size_inches(12, 8)
 		fig.set_dpi(100)
 		ax = sns.heatmap(data,
-			cmap='vlag', center=0, annot=True, fmt='.2f', linewidths=2, square=True)
+			vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=True, fmt='.2f', linewidths=2,
+			square=True,
+			cbar_kws={
+				'extend': 'both',
+				'label': 'Excess Over Bliss',
+				'ticks': [-1, 0, 1],
+			})
+		ax.collections[0].colorbar.set_ticklabels(
+			['-1 (Antagonism)', '0 (Noninteraction)', '+1 (Synergy)'])
 		ax.invert_yaxis()
 		plt.title(
 			f'{model_a.get_condition()} vs. {model_b.get_condition()}: Bliss Ixn ' +
