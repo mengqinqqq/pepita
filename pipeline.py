@@ -8,6 +8,7 @@ import warnings
 
 import analyze
 import dose_response
+import interactions2
 import util
 
 def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[], debug=0,
@@ -114,13 +115,53 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			plt.close()
 			plt.clf()
 	else:
-		model_combo = models_combo[0]
-		model_a = models[util.Cocktail(model_combo.cocktail.drugs[0])]
-		model_b = models[util.Cocktail(model_combo.cocktail.drugs[1])]
-		dose_response.analyze_checkerboard(model_a, model_b, models_combo,
+		model_combo_0 = models_combo[0]
+		model_a = models[util.Cocktail(model_combo_0.cocktail.drugs[0])]
+		model_b = models[util.Cocktail(model_combo_0.cocktail.drugs[1])]
+		dose_response.analyze_checkerboard(model_a, model_b, models_combo, method='Bliss',
 			file_name_context=plate_info)
 		dose_response.chart_checkerboard(model_a, model_b, models_combo,
 			file_name_context=plate_info)
+
+		doses_a = np.array([x.doses[0] for x in model_a.xs if x.get_drugs() != ('Control',)])
+		doses_b = np.array([x.doses[0] for x in model_b.xs if x.get_drugs() != ('Control',)])
+
+		responses_all_a = squarify(
+			[results[x.string] for x in model_a.xs if x.get_drugs() != ('Control',)])
+		responses_all_b = squarify(
+			[results[x.string] for x in model_b.xs if x.get_drugs() != ('Control',)])
+
+		combo_results = results.copy()
+		[combo_results.pop(solution.string, None) for solution in model_a.xs]
+		[combo_results.pop(solution.string, None) for solution in model_b.xs]
+		[combo_results.pop(solution.string, None) for solution in positive_control_solutions]
+		combo_solutions = [util.Solution(condition, conversions) for condition in combo_results]
+
+		doses_a_ab = np.array([solution.doses[0] for solution in combo_solutions])
+		doses_b_ab = np.array([solution.doses[1] for solution in combo_solutions])
+		responses_all_ab = squarify([results[solution.string] for solution in combo_solutions])
+
+		if not positive_control_scores:
+			positive_control_scores = np.array([
+				min([result for results_list in results.values() for result in results_list])
+			])
+
+		if not plate_info:
+			plate_info = os.path.basename(os.path.dirname(os.path.dirname(imagefiles[0])))
+
+		interactions2.response_surface(doses_a, responses_all_a, doses_b, responses_all_b,
+			doses_a_ab, doses_b_ab, responses_all_ab, positive_control_scores,
+			sampling_iterations=1000, sample_size=20, model_size=1, alpha=0.1,
+			file_name_context=plate_info)
+
+def squarify(list_of_lists):
+	width = max([len(row) for row in list_of_lists])
+
+	for row in list_of_lists:
+		pad_size = width - len(row)
+		row.extend([np.nan for _ in range(pad_size)])
+
+	return np.array(list_of_lists)
 
 def _key_value_pair(argument, delimiter='='):
 	return tuple(argument.split(delimiter))
