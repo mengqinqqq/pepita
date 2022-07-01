@@ -81,7 +81,7 @@ class Model:
 
 		if label:
 			plt.title(f'{self.get_condition()} Dose-Response Curve')
-			plt.xlabel(f'{self.get_condition()} Dose (μM)')
+			plt.xlabel(f'{self.get_condition()} Dose ({self.get_x_units()})')
 			plt.ylabel('Remaining Brightness')
 			plt.legend()
 
