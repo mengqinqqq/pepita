@@ -75,7 +75,7 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 	# print EC values
 
 	for model in models.values():
-		for ec_value in (50, 75, 90):
+		for ec_value in (50, 75, 90, 99):
 			concentn = model.effective_concentration(ec_value / 100)
 			if not np.isnan(concentn):
 				print((f'{model.get_condition()} '
