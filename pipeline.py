@@ -32,14 +32,14 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 	control_drugs = [util.Cocktail(util.Dose(control).drug) for control in plate_control]
 	models = {}
 
+	results = {str(util.Solution(key, conversions)): value for key, value in results.items()}
+
 	# positive control
 
-	positive_control_drugs = [
-		util.Cocktail(util.Dose(condition).drug) for condition in plate_positive_control]
 	positive_control_solutions = [
-		solution for drug in positive_control_drugs for solution in drug_conditions[drug]]
+		util.Solution(positive_control, conversions) for positive_control in plate_positive_control]
 	positive_control_scores = [
-		result for solution in positive_control_solutions for result in results[solution.string]]
+		result for solution in positive_control_solutions for result in results[str(solution)]]
 	with warnings.catch_warnings():
 		warnings.simplefilter('ignore', RuntimeWarning)
 		positive_control_value = np.nanmean(positive_control_scores)
@@ -61,14 +61,14 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			for solution in drug_conditions[control_drug]:
 				conditions.insert(0, solution)
 		for solution in conditions:
-			cocktail_scores[solution] = results[solution.string]
+			cocktail_scores[solution] = results[str(solution)]
 			with warnings.catch_warnings():
 				warnings.simplefilter('ignore', RuntimeWarning)
-				summary_score = np.nanmedian(results[solution.string])
+				summary_score = np.nanmedian(results[str(solution)])
 				summary_scores.append(summary_score)
 		models[cocktail] = dose_response.Model(
 			conditions, summary_scores, cocktail, E_max=positive_control_value)
-		models[cocktail].chart(results[solution.string], datapoints=cocktail_scores,
+		models[cocktail].chart(results[str(solution)], datapoints=cocktail_scores,
 			name=plate_info + '_' + str(cocktail) if plate_info else None,
 			scale=[positive_control_value, 100])
 
@@ -131,19 +131,19 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		doses_b = np.array([x.doses[0] for x in model_b.xs if x.get_drugs() != ('Control',)])
 
 		responses_all_a = squarify(
-			[results[x.string] for x in model_a.xs if x.get_drugs() != ('Control',)])
+			[results[str(x)] for x in model_a.xs if x.get_drugs() != ('Control',)])
 		responses_all_b = squarify(
-			[results[x.string] for x in model_b.xs if x.get_drugs() != ('Control',)])
+			[results[str(x)] for x in model_b.xs if x.get_drugs() != ('Control',)])
 
 		combo_results = results.copy()
-		[combo_results.pop(solution.string, None) for solution in model_a.xs]
-		[combo_results.pop(solution.string, None) for solution in model_b.xs]
-		[combo_results.pop(solution.string, None) for solution in positive_control_solutions]
+		[combo_results.pop(str(solution), None) for solution in model_a.xs]
+		[combo_results.pop(str(solution), None) for solution in model_b.xs]
+		[combo_results.pop(str(solution), None) for solution in positive_control_solutions]
 		combo_solutions = [util.Solution(condition, conversions) for condition in combo_results]
 
 		doses_a_ab = np.array([solution.doses[0] for solution in combo_solutions])
 		doses_b_ab = np.array([solution.doses[1] for solution in combo_solutions])
-		responses_all_ab = squarify([results[solution.string] for solution in combo_solutions])
+		responses_all_ab = squarify([results[str(solution)] for solution in combo_solutions])
 
 		if not positive_control_scores:
 			positive_control_scores = np.array([
