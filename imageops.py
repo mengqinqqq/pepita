@@ -212,7 +212,7 @@ def main(imagefiles, debug=1, logfile_prefix='imageops', particles=True):
 			bf_img = read(bf_filename, np.uint16)
 			fl_img = None if not particles else read(fl_filename, np.uint16, 1)
 		get_fish_mask(bf_img, fl_img, particles=particles, silent=debug<1, verbose=debug>1,
-			v_file_prefix=logfile_prefix)
+			v_file_prefix=logfile_prefix, mask_filename=bf_filename.replace('CH4', 'mask'))
 
 if __name__ == '__main__':
 	_test()
