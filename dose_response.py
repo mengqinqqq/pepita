@@ -74,7 +74,9 @@ class Model:
 			line_ys = [(value - scale[0]) / (scale[1] - scale[0]) for value in self.get_ys(line_xs)]
 			sns.lineplot(x=line_xs, y=line_ys, label='Model')
 
-			plt.scatter(self.effective_concentration(0.5), 0.04, color='black', label='EC50',
+			ec50 = self.effective_concentration(0.5)
+
+			plt.scatter(ec50, 0.04, color='black', label=f'EC50={ec50:.1f}{self.get_x_units()}',
 				marker='|', s=128)
 
 		if label:
