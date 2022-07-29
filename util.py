@@ -150,7 +150,7 @@ class Solution:
 		return float(self) > float(other)
 
 	def __hash__(self):
-		return hash(self.string)
+		return hash(tuple(self.doses))
 
 	def __mul__(self, other):
 		doses = [dose * other for dose in self.doses]
