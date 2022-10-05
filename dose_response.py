@@ -76,8 +76,9 @@ class Model:
 
 			ec50 = self.effective_concentration(0.5)
 
-			plt.scatter(ec50, 0.04, color='black', label=f'EC50={ec50:.1f}{self.get_x_units()}',
-				marker='|', s=128)
+			ec50_label = f'{ec50:.1f}{self.get_x_units()}' if not np.isnan(ec50) else 'N/A'
+
+			plt.scatter(ec50, 0.04, color='black', label=f'EC50={ec50_label}', marker='|', s=128)
 
 		if label:
 			plt.title(f'{self.get_condition()} Dose-Response Curve')
