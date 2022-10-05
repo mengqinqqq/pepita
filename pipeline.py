@@ -116,43 +116,53 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			plt.close()
 			plt.clf()
 	else:
-		model_combo_0 = models_combo[0]
-		model_a = models[util.Cocktail(model_combo_0.cocktail.drugs[0])]
-		model_b = models[util.Cocktail(model_combo_0.cocktail.drugs[1])]
+		pairs = {(model_combo.cocktail.drugs[0], model_combo.cocktail.drugs[1]) \
+			for model_combo in models_combo}
 
-		# sns.set_context('talk')
+		for pair in pairs:
+			model_a, model_b = models[util.Cocktail(pair[0])], models[util.Cocktail(pair[1])]
 
-		dose_response.analyze_checkerboard(model_a, model_b, models_combo, method='Bliss',
-			file_name_context=plate_info)
-		dose_response.chart_checkerboard(model_a, model_b, models_combo,
-			file_name_context=plate_info)
+			# sns.set_context('talk')
+			models_combo_relevant = [model_combo for model_combo in models_combo \
+				if model_combo.cocktail.drugs[0] in pair and model_combo.cocktail.drugs[1] in pair]
 
-		doses_a = np.array([x.doses[0] for x in model_a.xs if x.get_drugs() != ('Control',)])
-		doses_b = np.array([x.doses[0] for x in model_b.xs if x.get_drugs() != ('Control',)])
+			dose_response.analyze_checkerboard(model_a, model_b, models_combo_relevant,
+				method='Bliss', file_name_context=plate_info)
+			dose_response.chart_checkerboard(model_a, model_b, models_combo_relevant,
+				file_name_context=plate_info)
 
-		responses_all_a = squarify(
-			[results[x] for x in model_a.xs if x.get_drugs() != ('Control',)])
-		responses_all_b = squarify(
-			[results[x] for x in model_b.xs if x.get_drugs() != ('Control',)])
+			doses_a = np.array([x.doses[0] for x in model_a.xs if x.get_drugs() != ('Control',)])
+			doses_b = np.array([x.doses[0] for x in model_b.xs if x.get_drugs() != ('Control',)])
 
-		combo_solutions = [solution for solution in results.keys() if len(solution.doses) > 1]
+			responses_all_a = squarify(
+				[results[x] for x in model_a.xs if x.get_drugs() != ('Control',)])
+			responses_all_b = squarify(
+				[results[x] for x in model_b.xs if x.get_drugs() != ('Control',)])
 
-		doses_a_ab = np.array([solution.doses[0] for solution in combo_solutions])
-		doses_b_ab = np.array([solution.doses[1] for solution in combo_solutions])
-		responses_all_ab = squarify([results[solution] for solution in combo_solutions])
+			combo_solutions = [solution for solution in results.keys() if len(solution.doses) > 1]
 
-		if not positive_control_scores:
-			positive_control_scores = np.array([
-				min([result for results_list in results.values() for result in results_list])
-			])
+			doses_a_ab = np.array([solution.doses[0] for solution in combo_solutions])
+			doses_b_ab = np.array([solution.doses[1] for solution in combo_solutions])
+			responses_all_ab = squarify([results[solution] for solution in combo_solutions])
 
-		if not plate_info:
-			plate_info = os.path.basename(os.path.dirname(os.path.dirname(imagefiles[0])))
+			if not positive_control_scores:
+				positive_control_scores = np.array([
+					min([result for results_list in results.values() for result in results_list])
+				])
 
-		interactions2.response_surface(doses_a, responses_all_a, doses_b, responses_all_b,
-			doses_a_ab, doses_b_ab, responses_all_ab, positive_control_scores,
-			sampling_iterations=1000, sample_size=20, model_size=1, alpha=0.1,
-			file_name_context=plate_info)
+			if not plate_info:
+				plate_info = os.path.basename(os.path.dirname(os.path.dirname(imagefiles[0])))
+
+			try:
+				interactions2.response_surface(doses_a, responses_all_a, doses_b, responses_all_b,
+					doses_a_ab, doses_b_ab, responses_all_ab, positive_control_scores,
+					sampling_iterations=1000, sample_size=20, model_size=1, alpha=0.1,
+					file_name_context=plate_info)
+			except ValueError as ve:
+				if ve.args[0] == 'cov must be 2 dimensional and square':
+					print('Unable to analyze non-square interaction matrix')
+				else:
+					raise ve
 
 def squarify(list_of_lists):
 	width = max([len(row) for row in list_of_lists])
