@@ -14,9 +14,12 @@ import util
 
 def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[], debug=0,
 		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], plate_info=None,
-		plate_positive_control=[], silent=False):
+		plate_positive_control=[], silent=False, talk=False):
 	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
 		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
+
+	if talk:
+		sns.set_context('talk')
 
 	if chartfile is None and debug == 0 and os.path.exists(hashfile):
 		with open(hashfile, 'r') as f: # read cached results
@@ -122,7 +125,6 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		for pair in pairs:
 			model_a, model_b = models[util.Cocktail(pair[0])], models[util.Cocktail(pair[1])]
 
-			# sns.set_context('talk')
 			models_combo_relevant = [model_combo for model_combo in models_combo \
 				if model_combo.cocktail.drugs[0] in pair and model_combo.cocktail.drugs[1] in pair]
 
@@ -218,6 +220,10 @@ if __name__ == '__main__':
 		default=None,
 		help=('Any information identifying the plate(s) being analyzed that should be passed along '
 			'to files created by this process.'))
+
+	parser.add_argument('--talk',
+		action='store_true',
+		help=('If present, images will be generated with the Seaborn "talk" context.'))
 
 	analyze.set_arguments(parser)
 
