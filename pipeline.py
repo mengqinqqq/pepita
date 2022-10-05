@@ -23,7 +23,7 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			results = json.load(f)
 	else:
 		results = analyze.main(imagefiles, cap, chartfile, debug, group_regex, platefile,
-			plate_control, plate_ignore, True)
+			plate_control, plate_ignore, silent=False)
 		with open(hashfile, 'w') as f: # cache results for reuse
 			json.dump(results, f, ensure_ascii=False)
 
