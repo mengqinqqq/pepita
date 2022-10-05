@@ -1,16 +1,89 @@
 import argparse
+import copy
 import json
+import math
 import numpy as np
 import os
+from matplotlib.ticker import PercentFormatter
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sys
+from time import time
 import warnings
 
 import analyze
 import dose_response
 import interactions2
 import util
+
+LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
+
+def generate_plate_schematic(schematic, results, conversions=None, plate_info='[Unknown]',
+		scale=None, well_count=96):
+
+	results = copy.deepcopy(results) # don't mess with `results`, it's used after this
+
+	# scale values, and adjust heatmap settings accordingly, if necessary
+
+	if scale is not None:
+		min_, max_ = scale
+		for solution, values in results.items():
+			for i in range(len(values)):
+				values[i] = (values[i] - min_) / (max_ - min_)
+
+	vmax, fmt, format_, label = \
+		(1, '.0%', PercentFormatter(xmax=1, decimals=0), 'Remaining Hair-Cell Brightness') \
+			if scale is not None else (100, '.0f', None, 'Pipeline Score')
+
+	# produce matrix of responses by combining data from `schematic` and `results`
+
+	# iterate backwards so as not to mess up indices for subsequent loops
+	for row_idx in reversed(range(len(schematic))):
+		if not schematic[row_idx]:
+			del schematic[row_idx] # remove empty lists or numpy will reject ragged arrays
+
+	responses = np.zeros_like(schematic, dtype=float)
+
+	for row_idx in range(len(schematic)):
+		for col_idx in range(len(schematic[row_idx])):
+			solution = util.Solution(schematic[row_idx][col_idx], conversions)
+			responses[row_idx, col_idx] = results[solution].pop(0)
+
+	nums = [str(n) for n in range(1, 99)]
+	alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	col_labels = nums[1:11] if well_count == 96 else nums[0:6] if well_count == 24 else nums[0:4]
+	row_labels = list(alpha[1:7]) if well_count == 96 else list(alpha[0:4]) if well_count == 24 \
+		else list(alpha[0:3])
+
+	if len(responses) > math.sqrt(well_count): # there must be 2 plates: insert blank line
+		insertable_idx = len(responses) // 2
+		responses = np.insert(responses, insertable_idx, np.full_like(responses[0], np.nan), axis=0)
+		row_labels = row_labels[0:insertable_idx] + [''] + row_labels[0:insertable_idx]
+
+	# make the heatmap
+
+	fig = plt.figure()
+	fig.set_size_inches(12, 8)
+	fig.set_dpi(100)
+
+	ax = sns.heatmap(responses,
+		vmin=0, vmax=vmax, cmap='mako', annot=True, fmt=fmt, linewidths=2, square=True,
+		cbar_kws={
+			'format': format_, 'label': label, 'ticks': [0, vmax],
+		}, xticklabels=col_labels, yticklabels=row_labels)
+	ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
+
+	suffix1 = ', Scaled' if scale is not None else ''
+	suffix2 = '_scaled' if scale is not None else ''
+
+	plt.title(
+		f'{plate_info} {well_count}-well Plate Schematic{suffix1}'
+	)
+	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
+	plt.savefig(
+		f'{LOG_DIR}/{plate_info}_{well_count}-well_schematic_heatmap{suffix2}_{uniq_str}.png'
+	)
+	plt.clf()
 
 def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[], debug=0,
 		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], plate_info=None,
@@ -52,6 +125,15 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			'positive control'))
 		positive_control_value = np.nanmin(
 			[value for condition, values in results.items() for value in values])
+
+	# generate plate schematics
+
+	schematic = analyze.get_schematic(platefile, len(imagefiles), plate_ignore, flat=False)
+
+	generate_plate_schematic(schematic, results, conversions=conversions, plate_info=plate_info,
+		well_count=96)
+	generate_plate_schematic(schematic, results, conversions=conversions, plate_info=plate_info,
+		scale=(positive_control_value, 100), well_count=96)
 
 	# generate models, dose-response charts
 

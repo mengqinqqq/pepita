@@ -107,7 +107,7 @@ def chart(results, chartfile):
 	plt.tight_layout()
 	plt.savefig(chartfile)
 
-def get_schematic(platefile, target_count, plate_ignore):
+def get_schematic(platefile, target_count, plate_ignore, flat=True):
 	if not platefile:
 		return keyence.LAYOUT_DEFAULT
 
@@ -126,7 +126,7 @@ def get_schematic(platefile, target_count, plate_ignore):
 		if count != target_count:
 			raise UserError('Schematic does not have same number of cells as images provided')
 
-	return [well for row in schematic for well in row]
+	return schematic if not flat else [well for row in schematic for well in row]
 
 def main(imagefiles, cap=-1, chartfile=None, debug=0, group_regex='.*', platefile=None,
 		plate_control=['B'], plate_ignore=[], silent=False):
