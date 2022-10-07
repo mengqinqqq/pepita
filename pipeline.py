@@ -72,7 +72,7 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 	# make the heatmap
 
 	fig = plt.figure()
-	fig.set_size_inches(12, 8)
+	fig.set_size_inches(12, 12)
 	fig.set_dpi(100)
 
 	ax = sns.heatmap(responses,
