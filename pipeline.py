@@ -6,6 +6,7 @@ import numpy as np
 import os
 from matplotlib.ticker import PercentFormatter
 import matplotlib.pyplot as plt
+import re
 import seaborn as sns
 import sys
 from time import time
@@ -42,14 +43,20 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 	# iterate backwards so as not to mess up indices for subsequent loops
 	for row_idx in reversed(range(len(schematic))):
 		if not schematic[row_idx]:
-			del schematic[row_idx] # remove empty lists or numpy will reject ragged arrays
+			del schematic[row_idx] # remove empty lists or numpy will reject ragged array
 
+	annotations = np.full_like(schematic, '')
 	responses = np.zeros_like(schematic, dtype=float)
 
 	for row_idx in range(len(schematic)):
 		for col_idx in range(len(schematic[row_idx])):
 			solution = util.Solution(schematic[row_idx][col_idx], conversions)
-			responses[row_idx, col_idx] = results[solution].pop(0)
+			result = results[solution].pop(0)
+			label = re.sub(r'([A-Z])[A-Za-z]+', r'\1', schematic[row_idx][col_idx])
+			label = re.sub(r'\s+', '', label)
+			label = re.sub(r'\+', '+\n', label)
+			annotations[row_idx, col_idx] = f'{result:{hmap_fmt}}\n{label}'
+			responses[row_idx, col_idx] = result
 
 	col_labels = NUMS[1:11] if well_count == 96 else NUMS[0:6] if well_count == 24 else NUMS[0:4]
 	row_labels = list(ALPHA[1:7]) if well_count == 96 else list(ALPHA[0:4]) if well_count == 24 \
@@ -57,6 +64,8 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 
 	if len(responses) > math.sqrt(well_count): # there must be 2 plates: insert blank line
 		insertable_idx = len(responses) // 2
+		annotations = np.insert(annotations, insertable_idx, np.full_like(annotations[0], ''),
+			axis=0)
 		responses = np.insert(responses, insertable_idx, np.full_like(responses[0], np.nan), axis=0)
 		row_labels = row_labels[0:insertable_idx] + [''] + row_labels[0:insertable_idx]
 
@@ -67,7 +76,7 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 	fig.set_dpi(100)
 
 	ax = sns.heatmap(responses,
-		vmin=0, vmax=vmax, cmap='mako', annot=True, fmt=hmap_fmt, linewidths=2, square=True,
+		vmin=0, vmax=vmax, cmap='mako', annot=annotations, fmt='', linewidths=2, square=True,
 		cbar_kws={
 			'format': cbar_fmt, 'label': cbar_label, 'ticks': [0, vmax],
 		}, xticklabels=col_labels, yticklabels=row_labels)
