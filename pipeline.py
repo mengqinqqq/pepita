@@ -12,6 +12,7 @@ import sys
 from time import time
 import warnings
 
+import absolute
 import analyze
 import dose_response
 import interactions2
@@ -82,8 +83,8 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 		}, xticklabels=col_labels, yticklabels=row_labels)
 	ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
 
-	suffix1 = ', Scaled' if scale is not None else ''
-	suffix2 = '_scaled' if scale is not None else ''
+	suffix1 = '' if scale is None else ', Absolute' if scale[1] > 10_000 else ', Scaled'
+	suffix2 = '' if scale is None else '_absolute' if scale[1] > 10_000 else '_scaled'
 
 	plt.title(f'{plate_info} {well_count}-well Plate Schematic{suffix1}')
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
@@ -94,7 +95,7 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 
 def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[], debug=0,
 		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], plate_info=None,
-		plate_positive_control=[], silent=False, talk=False):
+		plate_positive_control=[], absolute_chart=False, silent=False, talk=False):
 	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
 		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
 
@@ -141,6 +142,16 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		well_count=96)
 	generate_plate_schematic(schematic, results, conversions=conversions, plate_info=plate_info,
 		scale=(positive_control_value, 100), well_count=96)
+
+	if absolute_chart:
+		abs_chartfile = None if chartfile is None else chartfile.replace('.', '_absolute.')
+		results2 = absolute.main(imagefiles, cap, abs_chartfile, debug, group_regex, platefile,
+			plate_control, plate_ignore, silent=False)
+		results2 = {util.Solution(key, conversions): value for key, value in results2.items()}
+		min_ = min(min(group_results) for group_results in results2.values())
+		max_ = max(max(group_results) for group_results in results2.values())
+		generate_plate_schematic(schematic, results2, conversions=conversions,
+			plate_info=plate_info, scale=(min_, max_), well_count=96)
 
 	# generate models, dose-response charts
 
@@ -309,6 +320,11 @@ if __name__ == '__main__':
 		default=None,
 		help=('Any information identifying the plate(s) being analyzed that should be passed along '
 			'to files created by this process.'))
+
+	parser.add_argument('--absolute-chart',
+		action='store_true',
+		help=('If present, a plate graphic will be generated with absolute (rather than relative) '
+			'brightness values.'))
 
 	parser.add_argument('--talk',
 		action='store_true',
