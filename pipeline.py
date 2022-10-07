@@ -17,6 +17,8 @@ import interactions2
 import util
 
 LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
+ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+NUMS = [str(n) for n in range(1, 99)]
 
 def generate_plate_schematic(schematic, results, conversions=None, plate_info='[Unknown]',
 		scale=None, well_count=96):
@@ -31,7 +33,7 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 			for i in range(len(values)):
 				values[i] = (values[i] - min_) / (max_ - min_)
 
-	vmax, fmt, format_, label = \
+	vmax, hmap_fmt, cbar_fmt, cbar_label = \
 		(1, '.0%', PercentFormatter(xmax=1, decimals=0), 'Remaining Hair-Cell Brightness') \
 			if scale is not None else (100, '.0f', None, 'Pipeline Score')
 
@@ -49,11 +51,9 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 			solution = util.Solution(schematic[row_idx][col_idx], conversions)
 			responses[row_idx, col_idx] = results[solution].pop(0)
 
-	nums = [str(n) for n in range(1, 99)]
-	alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-	col_labels = nums[1:11] if well_count == 96 else nums[0:6] if well_count == 24 else nums[0:4]
-	row_labels = list(alpha[1:7]) if well_count == 96 else list(alpha[0:4]) if well_count == 24 \
-		else list(alpha[0:3])
+	col_labels = NUMS[1:11] if well_count == 96 else NUMS[0:6] if well_count == 24 else NUMS[0:4]
+	row_labels = list(ALPHA[1:7]) if well_count == 96 else list(ALPHA[0:4]) if well_count == 24 \
+		else list(ALPHA[0:3])
 
 	if len(responses) > math.sqrt(well_count): # there must be 2 plates: insert blank line
 		insertable_idx = len(responses) // 2
@@ -67,18 +67,16 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 	fig.set_dpi(100)
 
 	ax = sns.heatmap(responses,
-		vmin=0, vmax=vmax, cmap='mako', annot=True, fmt=fmt, linewidths=2, square=True,
+		vmin=0, vmax=vmax, cmap='mako', annot=True, fmt=hmap_fmt, linewidths=2, square=True,
 		cbar_kws={
-			'format': format_, 'label': label, 'ticks': [0, vmax],
+			'format': cbar_fmt, 'label': cbar_label, 'ticks': [0, vmax],
 		}, xticklabels=col_labels, yticklabels=row_labels)
 	ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
 
 	suffix1 = ', Scaled' if scale is not None else ''
 	suffix2 = '_scaled' if scale is not None else ''
 
-	plt.title(
-		f'{plate_info} {well_count}-well Plate Schematic{suffix1}'
-	)
+	plt.title(f'{plate_info} {well_count}-well Plate Schematic{suffix1}')
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.savefig(
 		f'{LOG_DIR}/{plate_info}_{well_count}-well_schematic_heatmap{suffix2}_{uniq_str}.png'
