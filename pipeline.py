@@ -144,8 +144,6 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 	schematic = analyze.get_schematic(platefile, len(imagefiles), plate_ignore, flat=False)
 
 	generate_plate_schematic(schematic, results, conversions=conversions, plate_info=plate_info,
-		well_count=96)
-	generate_plate_schematic(schematic, results, conversions=conversions, plate_info=plate_info,
 		scale=(positive_control_value, 100), well_count=96)
 
 	if absolute_chart:
