@@ -19,6 +19,8 @@ import interactions2
 import util
 
 LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
+ABS_MAX = int(util.get_config('absolute_max'))
+ABS_MIN = int(util.get_config('absolute_min'))
 ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 NUMS = [str(n) for n in range(1, 99)]
 
@@ -151,10 +153,8 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		results2 = absolute.main(imagefiles, cap, abs_chartfile, debug, group_regex, platefile,
 			plate_control, plate_ignore, silent=False)
 		results2 = {util.Solution(key, conversions): value for key, value in results2.items()}
-		min_ = min(min(group_results) for group_results in results2.values())
-		max_ = max(max(group_results) for group_results in results2.values())
 		generate_plate_schematic(schematic, results2, conversions=conversions,
-			plate_info=plate_info, scale=(min_, max_), well_count=96)
+			plate_info=plate_info, scale=(ABS_MIN, ABS_MAX), well_count=96)
 
 	# generate models, dose-response charts
 
