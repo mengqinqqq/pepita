@@ -18,8 +18,9 @@ with open(os.path.join(util.get_here(), lens_table), encoding='utf8', newline=''
 	reader = csv.reader(f, delimiter='\t')
 	next(reader, None) # Skip the header
 
-	for name, working_distance, pixel_size in reader:
+	for name, working_distance, pixel_size, numerical_aperture in reader:
 		lenses[name] = {
+			'Numerical Aperture': float(numerical_aperture),
 			'Pixel Size': float(pixel_size),
 			'Working Distance': float(working_distance)
 		}
@@ -50,13 +51,14 @@ def extract_metadata(filename):
 	metadata['Field of View']['Y End'] = int(_getxml(main, 'Shooting', 'StageLocationY')) + int(_getxml(main, 'Shooting', 'XyStageRegion', 'Height'))
 	metadata['Field of View']['Z'] = int(_getxml(main, 'Shooting', 'StageLocationZ'))
 	metadata['Gain'] = {};
-	metadata['Gain']['Camera Gain'] = int(_getxml(main, 'Shooting', 'Parameter', 'CameraGain')) - 54
+	metadata['Gain']['Camera Gain'] = int(_getxml(main, 'Shooting', 'Parameter', 'CameraGain')) - 54 # match readout in Keyence analysis software
 	metadata['Gain']['Camera Gain Unit'] = _getxml(main, 'Shooting', 'Parameter', 'CameraGainUnit')
 	metadata['Gain']['Camera Hardware Gain'] = int(_getxml(main, 'Shooting', 'Parameter', 'CameraHardwareGain'))
 	metadata['IsoSpeed'] = _getxml(main, 'Shooting', 'Parameter', 'IsoSpeed')
 	metadata['Lens'] = _getxml(main, 'Lens', 'LensName')
 	metadata['Magnification'] = int(_getxml(main, 'Lens', 'Magnification')) / 100
 
+	metadata['Numerical Aperture'] = lenses[metadata['Lens']]['Numerical Aperture']
 	metadata['Pixel Size'] = lenses[metadata['Lens']]['Pixel Size']
 	metadata['Working Distance'] = lenses[metadata['Lens']]['Working Distance']
 
@@ -83,10 +85,8 @@ def _getxml(element, *fields):
 if __name__ == '__main__':
 	if len(sys.argv) > 1:
 		# print(json.dumps(extract_metadata(sys.argv[1]), indent=2))
-		import analyze4
 		for filename in sys.argv[1:]:
-			plate, column, _ = analyze4._get_info(filename, None)
 			metadata = extract_metadata(filename)
-			print('plate=%s; column=%s; aperture=%d; exposure=%d; gain1=%d; gain2=%d; iso=%s' % (plate, column, metadata['Aperture'], metadata['Exposure']['Value'], metadata['Gain']['Camera Gain'], metadata['Gain']['Camera Hardware Gain'], metadata['IsoSpeed']))
+			print(filename, json.dumps(metadata, indent=2))
 	else:
 		raise TypeError('Invoke with an argument, i.e. the name of a file from which to extract metadata.')
