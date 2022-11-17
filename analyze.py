@@ -10,11 +10,16 @@ import warnings
 
 import imageops
 import keyence
+import util
+
+replacement_delim = util.get_config('filename_replacement_delimiter')
+replacement_brfld = util.get_config('filename_replacement_brightfield').split(replacement_delim)
+replacement_mask = util.get_config('filename_replacement_mask').split(replacement_delim)
 
 class Image:
 	def __init__(self, filename, group, debug=0):
 		self.fl_filename = filename
-		self.bf_filename = filename.replace('CH1', 'CH4')
+		self.bf_filename = filename.replace(replacement_brfld[0], replacement_brfld[1])
 
 		match = re.search(r'([a-zA-Z0-9]+)_XY([0-9][0-9])_', filename)
 		if not match:
@@ -62,7 +67,8 @@ class Image:
 		if self.mask is None:
 			self.mask = imageops.get_fish_mask(
 				self.get_bf_img(), self.get_fl_img(), True, self.debug < 1, self.debug >= 2,
-				'{}_XY{:02d}'.format(self.plate, self.xy), self.fl_filename.replace('CH1', 'mask')
+				'{}_XY{:02d}'.format(self.plate, self.xy),
+				self.fl_filename.replace(replacement_mask[0], replacement_mask[1])
 			)
 		return self.mask
 
