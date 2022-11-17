@@ -186,7 +186,7 @@ class Model:
 		return str(self.__dict__)
 
 def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
-		file_name_context=None):
+		file_name_context=None, effect_level=0.5):
 	file_name_context1 = ''
 	file_name_context2 = ''
 	if file_name_context:
@@ -207,7 +207,6 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 			models_combo = [model_combo.pivot() for model_combo in models_combo]
 			swapped = True
 
-		effect_level = 0.5
 		effect_pretty = f'{(effect_level * 100):.0f}'
 		ec_a = model_a.effective_concentration(effect_level)
 		ec_b = model_b.effective_concentration(effect_level)
