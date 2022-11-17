@@ -156,8 +156,9 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			sns.set_context('talk')
 
 		abs_chartfile = None if chartfile is None else chartfile.replace('.', '_absolute.')
-		results2 = absolute.main(imagefiles, cap, abs_chartfile, debug, group_regex, platefile,
-			plate_control, plate_ignore, silent=False)
+		results2 = absolute.main(imagefiles, cap=cap, chartfile=abs_chartfile, debug=0,
+			group_regex=group_regex, platefile=platefile, plate_control=plate_control,
+			plate_ignore=plate_ignore, silent=False)
 		results2 = {util.Solution(key, conversions): value for key, value in results2.items()}
 		generate_plate_schematic(schematic, results2, conversions=conversions,
 			plate_info=plate_info, scale=(ABS_MIN, ABS_MAX), well_count=96)
