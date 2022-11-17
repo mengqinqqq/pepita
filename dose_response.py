@@ -106,7 +106,7 @@ class Model:
 	# pct_survival = (f(x) - min) / (max - min)
 	# f(x) = c + (d - c) / (1 + (x / e)**b)
 	# yields x
-	def effective_concentration(self, pct_inhibition):
+	def effective_concentration(self, pct_inhibition, silent=False):
 		if pct_inhibition <= 0 or pct_inhibition >= 1:
 			raise RuntimeError('Inhibition level must be between 0 and 1')
 
@@ -124,7 +124,8 @@ class Model:
 		pct_pts_above_E_max = pct_survival * (max_ - min_) + min_ - c
 
 		if pct_pts_above_E_max <= 0:
-			print(f'WARN: {self.get_condition()} EC_{int(pct_inhibition*100)} is unreachable')
+			if not silent:
+				print(f'WARN: {self.get_condition()} EC_{int(pct_inhibition*100)} is unreachable')
 			return np.nan
 
 		return e * ((d - c)/pct_pts_above_E_max - 1)**(1/b)
@@ -627,14 +628,14 @@ def get_combo_additive_expectation(pct_inhibition, model_a, model_b, model_combo
 	conc_b = conc_a / combo_ratio_a
 	return conc_a + conc_b
 
-def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_ratio_a):
+def get_combo_FIC(pct_inhibition, model_a, model_b, model_combo, combo_ratio_a, silent=False):
 	# set model_b to the model with the higher maximum effect = lower survival at maximum effect
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
 		combo_ratio_a = combo_ratio_a.reciprocal()
 
-	ec_b_alone = model_b.effective_concentration(pct_inhibition)
-	ec_combo = model_combo.effective_concentration(pct_inhibition)
+	ec_b_alone = model_b.effective_concentration(pct_inhibition, silent)
+	ec_combo = model_combo.effective_concentration(pct_inhibition, silent)
 
 	if np.isnan(ec_b_alone) or np.isnan(ec_combo):
 		return np.nan
