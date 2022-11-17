@@ -87,6 +87,7 @@ class Model:
 			plt.legend()
 
 		if close:
+			plt.tight_layout()
 			uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 			if not name:
 				name = self.get_condition()
@@ -266,6 +267,7 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 
 		plt.xlim(right=max_x)
 		plt.ylim(top=max_y)
+		plt.tight_layout()
 		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 		plt.savefig(
 			os.path.join(LOG_DIR, f'{model_a.cocktail}+{model_b.cocktail}_isoboles_{uniq_str}.png'))
@@ -320,6 +322,7 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 		plt.title(
 			f'{model_a.get_condition()} vs. {model_b.get_condition()}: Bliss Ixn ' +
 				f'{file_name_context1}')
+		plt.tight_layout()
 		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 		plt.savefig(
 			f'{LOG_DIR}/{model_a.get_condition()}-{model_b.get_condition()}_{file_name_context2}' +
@@ -459,6 +462,7 @@ def chart_checkerboard(model_a, model_b, models_combo, file_name_context=None):
 		})
 	ax.invert_yaxis()
 	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()} {file_name_context1}')
+	plt.tight_layout()
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.savefig(
 		f'{LOG_DIR}/{model_a.get_condition()}-{model_b.get_condition()}_{file_name_context2}' +
@@ -495,6 +499,7 @@ def chart_diamond(model_a, model_b, model_combo):
 		vmin=model_a.get_absolute_E_max(), vmax=model_a.E_0, cmap='viridis', annot=True, fmt='.1f',
 		linewidths=1, square=True)
 	plt.title(f'{model_a.get_condition()} vs. {model_b.get_condition()}: Model')
+	plt.tight_layout()
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.savefig(
 		f'{LOG_DIR}/combo_{model_a.get_condition()}-{model_b.get_condition()}_model_{uniq_str}.png')
@@ -681,6 +686,7 @@ def plot_func(xs, func, label, filename_prefix, x_label=None, close=True, color=
 	plt.plot(line_xs, line_ys, color=color, label=label, marker=None, zorder=-1)
 	plt.legend()
 	if close:
+		plt.tight_layout()
 		uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 		plt.savefig(os.path.join(LOG_DIR, f'{filename_prefix}_{uniq_str}.png'))
 		plt.close()

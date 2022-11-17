@@ -136,6 +136,7 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 		['-1 (Antagonism)', '0 (Additivity)', '+1 (Synergy)'])
 	ax.invert_yaxis()
 	plt.title(f'{name_a} vs. {name_b}: Bliss Ixn ({model_size}-param)')
+	plt.tight_layout()
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
 	plt.savefig(
 		f'{LOG_DIR}/{name_a}-{name_b}_{file_name_context}bliss_{model_size}-param_{uniq_str}.png'
