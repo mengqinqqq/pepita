@@ -43,13 +43,17 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 
 	# produce matrix of responses by combining data from `schematic` and `results`
 
+	max_width = 0
+
 	# iterate backwards so as not to mess up indices for subsequent loops
 	for row_idx in reversed(range(len(schematic))):
 		if not schematic[row_idx]:
 			del schematic[row_idx] # remove empty lists or numpy will reject ragged array
+		elif len(schematic[row_idx]) > max_width:
+			max_width = len(schematic[row_idx])
 
-	annotations = np.full_like(schematic, '')
-	responses = np.zeros_like(schematic, dtype=float)
+	annotations = np.full_like(schematic, '', shape=(len(schematic), max_width))
+	responses = np.full_like(schematic, np.nan, dtype=np.double, shape=(len(schematic), max_width))
 
 	for row_idx in range(len(schematic)):
 		for col_idx in range(len(schematic[row_idx])):
@@ -100,7 +104,8 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 
 def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[], debug=0,
 		group_regex='.*', platefile=None, plate_control=['B'], plate_ignore=[], plate_info=None,
-		plate_positive_control=[], absolute_chart=False, silent=False, talk=False):
+		plate_positive_control=[], treatment_platefile=None, absolute_chart=False, silent=False,
+		talk=False):
 	hashfile = util.get_inputs_hashfile(imagefiles=imagefiles, cap=cap, group_regex=group_regex,
 		platefile=platefile, plate_control=plate_control, plate_ignore=plate_ignore)
 
@@ -332,6 +337,12 @@ if __name__ == '__main__':
 		default=None,
 		help=('Any information identifying the plate(s) being analyzed that should be passed along '
 			'to files created by this process.'))
+
+	parser.add_argument('-tp', '--treatment-platefile',
+		help='CSV file containing a schematic of the plate in which the imaged fish were treated. '
+			'Used to chart responses by treatment location, if desired. Row and column headers are '
+			'optional. The cell values are essentially just arbitrary labels: results will be '
+			'grouped and charted according to the supplied values.')
 
 	parser.add_argument('--absolute-chart',
 		action='store_true',
