@@ -29,11 +29,19 @@ class Model:
 			with warnings.catch_warnings():
 				warnings.simplefilter('ignore', RuntimeWarning)
 				warnings.simplefilter('ignore', scipy.optimize.OptimizeWarning)
-				try:
-					popt, pcov = scipy.optimize.curve_fit(self.equation, self.xs, self.ys)
-					self.b, self.c, self.e = popt
-				except:
+				fits = {}
+				for method in ('lm', 'trf', 'dogbox'):
+					try:
+						popt, _ = scipy.optimize.curve_fit(self.equation, self.xs, self.ys,
+							method=method)
+						err = sum(self.equation(xs, *popt) - ys)
+						fits[err] = popt
+					except:
+						pass
+				if not fits:
 					self.b, self.c, self.e = None, None, None
+				else:
+					self.b, self.c, self.e = fits[min(fits)]
 		else:
 			self.b, self.c, self.e = None, None, None
 
