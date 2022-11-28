@@ -59,7 +59,7 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 		for col_idx in range(len(schematic[row_idx])):
 			solution = util.Solution(schematic[row_idx][col_idx], conversions)
 			result = results[solution].pop(0)
-			label = re.sub(r'([A-Z])([A-Za-z])[A-Za-z]+(\d+)?',
+			label = re.sub(r'([A-Z])([A-Za-z])[A-Za-z]+\s?([\d.A-Za-zμ/]+)?',
 				lambda match: f'{match.group(1)}{match.group(2).lower()}',
 				schematic[row_idx][col_idx])
 			label = re.sub(r' 0μM', '', label)
