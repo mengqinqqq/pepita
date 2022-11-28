@@ -120,9 +120,7 @@ def plot_heatmap(name_a, name_b, units_a, units_b, doses_a, doses_b, responses_a
 	data_annotations = data.pivot_table(
 		index=label_a, columns=label_b, values='label', aggfunc='first', dropna=False)
 
-	fig = plt.figure()
-	fig.set_size_inches(12, 8)
-	fig.set_dpi(100)
+	fig = plt.figure(figsize=(12, 8), dpi=100)
 	ax = sns.heatmap(data_values,
 		vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=data_annotations, fmt='', linewidths=2,
 		square=True,

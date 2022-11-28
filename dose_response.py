@@ -53,40 +53,41 @@ class Model:
 		if scale is None:
 			scale = [self.E_max, self.E_0]
 
-		sns.set_theme(style='darkgrid')
-
 		ys = [(value - scale[0]) / (scale[1] - scale[0]) for value in self.ys]
 
-		plt.scatter(self.xs, ys, color='black', marker='_', s=256)
+		with sns.axes_style(style='darkgrid'):
+			plt.scatter(self.xs, ys, color='black', marker='_', s=256)
 
-		ax = plt.gca()
-		# ax.set_ylim(bottom=0)
-		ax.yaxis.set_major_formatter(PercentFormatter(1))
+			ax = plt.gca()
+			# ax.set_ylim(bottom=0)
+			ax.yaxis.set_major_formatter(PercentFormatter(1))
 
-		if datapoints:
-			scores = [value for values in datapoints.values() for value in values]
-			scores = [(value - scale[0]) / (scale[1] - scale[0]) for value in scores]
+			if datapoints:
+				scores = [value for values in datapoints.values() for value in values]
+				scores = [(value - scale[0]) / (scale[1] - scale[0]) for value in scores]
 
-			data = pd.DataFrame({
-				'brightness': scores,
-				'concentration': [
-					float(soln) for soln, values in datapoints.items() for _ in values
-				],
-			})
-			sns.scatterplot(
-				x='concentration', y='brightness', data=data, color='black', label='Measurements',
-				marker='.', s=64)
+				data = pd.DataFrame({
+					'brightness': scores,
+					'concentration': [
+						float(soln) for soln, values in datapoints.items() for _ in values
+					],
+				})
+				sns.scatterplot(
+					x='concentration', y='brightness', data=data, color='black',
+					label='Measurements', marker='.', s=64)
 
-		if self.b:
-			line_xs = np.linspace(0, float(max(self.xs)), 100)
-			line_ys = [(value - scale[0]) / (scale[1] - scale[0]) for value in self.get_ys(line_xs)]
-			sns.lineplot(x=line_xs, y=line_ys, label='Model')
+			if self.b:
+				line_xs = np.linspace(0, float(max(self.xs)), 100)
+				line_ys = [
+					(value - scale[0]) / (scale[1] - scale[0]) for value in self.get_ys(line_xs)]
+				sns.lineplot(x=line_xs, y=line_ys, label='Model')
 
-			ec50 = self.effective_concentration(0.5)
+				ec50 = self.effective_concentration(0.5)
 
-			ec50_label = f'{ec50:.1f}{self.get_x_units()}' if not np.isnan(ec50) else 'N/A'
+				ec50_label = f'{ec50:.1f}{self.get_x_units()}' if not np.isnan(ec50) else 'N/A'
 
-			plt.scatter(ec50, 0.04, color='black', label=f'EC50={ec50_label}', marker='|', s=128)
+				plt.scatter(ec50, 0.04, color='black', label=f'EC50={ec50_label}', marker='|',
+					s=128)
 
 		if label:
 			plt.title(f'{self.get_condition()} Dose-Response Curve')
@@ -194,9 +195,7 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 		file_name_context2 = file_name_context + '_'
 
 	if method == 'interpolation':
-		fig = plt.figure()
-		fig.set_size_inches(12, 8)
-		fig.set_dpi(100)
+		fig = plt.figure(figsize=(12, 8), dpi=100)
 		ax = fig.add_subplot(1, 1, 1)
 		ax.margins(0.006)
 
@@ -311,9 +310,7 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 			index=label_a, columns=label_b, values='Bliss Interaction', aggfunc='mean',
 			dropna=False)
 
-		fig = plt.figure()
-		fig.set_size_inches(12, 8)
-		fig.set_dpi(100)
+		fig = plt.figure(figsize=(12, 8), dpi=100)
 		ax = sns.heatmap(data,
 			vmin=-1, vmax=1, cmap='vlag_r', center=0, annot=True, fmt='.2f', linewidths=2,
 			square=True,
@@ -457,9 +454,7 @@ def chart_checkerboard(model_a, model_b, models_combo, file_name_context=None):
 	data = data.pivot_table(
 		index=label_a, columns=label_b, values='Pct. Survival', aggfunc='median')
 
-	fig = plt.figure()
-	fig.set_size_inches(12, 8)
-	fig.set_dpi(100)
+	fig = plt.figure(figsize=(12, 8), dpi=100)
 	ax = sns.heatmap(data,
 		vmin=0, vmax=1, cmap='mako', annot=True, fmt='.0%', linewidths=2, square=True,
 		cbar_kws={

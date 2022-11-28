@@ -96,23 +96,20 @@ class UserError(ValueError):
 	pass
 
 def chart(results, chartfile):
-	sns.set_theme(style='whitegrid')
+	with sns.axes_style(style='whitegrid'):
+		data = pd.DataFrame({
+			'brightness': [value for values in results.values() for value in values],
+			'group': [key for key, values in results.items() for _ in values],
+		})
 
-	data = pd.DataFrame({
-		'brightness': [value for values in results.values() for value in values],
-		'group': [key for key, values in results.items() for _ in values],
-	})
-
-	fig = plt.figure()
-	fig.set_size_inches(12, 8)
-	fig.set_dpi(100)
-	ax = sns.swarmplot(x='group', y='brightness', data=data)
-	ax.set_ylim(bottom=0)
-	sns.boxplot(x='group', y='brightness', data=data, showbox=False, showcaps=False,
-		showfliers=False, whiskerprops={'visible': False})
-	plt.xticks(rotation=90)
-	plt.tight_layout()
-	plt.savefig(chartfile)
+		fig = plt.figure(figsize=(12, 8), dpi=100)
+		ax = sns.swarmplot(x='group', y='brightness', data=data)
+		ax.set_ylim(bottom=0)
+		sns.boxplot(x='group', y='brightness', data=data, showbox=False, showcaps=False,
+			showfliers=False, whiskerprops={'visible': False})
+		plt.xticks(rotation=90)
+		plt.tight_layout()
+		plt.savefig(chartfile)
 
 def get_schematic(platefile, target_count, plate_ignore, flat=True):
 	if not platefile:

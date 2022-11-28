@@ -81,9 +81,7 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 
 	# make the heatmap
 
-	fig = plt.figure()
-	fig.set_size_inches(12, 12)
-	fig.set_dpi(100)
+	fig = plt.figure(figsize=(12, 12), dpi=100)
 
 	ax = sns.heatmap(responses,
 		vmin=0, vmax=vmax, cmap='mako', annot=annotations, fmt='', linewidths=2, square=True,
@@ -152,9 +150,6 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		scale=(positive_control_value, 100), well_count=96)
 
 	if absolute_chart:
-		if talk:
-			sns.set_context('talk')
-
 		abs_chartfile = None if chartfile is None else chartfile.replace('.', '_absolute.')
 		results2 = absolute.main(imagefiles, cap=cap, chartfile=abs_chartfile, debug=0,
 			group_regex=group_regex, platefile=platefile, plate_control=plate_control,
@@ -181,8 +176,6 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 				summary_scores.append(summary_score)
 		models[cocktail] = dose_response.Model(
 			conditions, summary_scores, cocktail, E_max=positive_control_value)
-		if talk:
-			sns.set_context('talk')
 		models[cocktail].chart(results[solution], datapoints=cocktail_scores,
 			name=plate_info + '_' + str(cocktail) if plate_info else None,
 			scale=[positive_control_value, 100])
@@ -204,9 +197,7 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		total_max_x = 1
 		total_max_y = 1
 
-		fig = plt.figure()
-		fig.set_size_inches(12, 8)
-		fig.set_dpi(100)
+		fig = plt.figure(figsize=(12, 8), dpi=100)
 		ax = fig.add_subplot(1, 1, 1)
 		ax.margins(0.006)
 
@@ -217,8 +208,6 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			subcocktail_b = util.Cocktail(model_combo.cocktail.drugs[1])
 			model_a = models[subcocktail_a]
 			model_b = models[subcocktail_b]
-			if talk:
-				sns.set_context('talk')
 			plot_filename, max_x, max_y = dose_response.analyze_diamond(
 				model_a, model_b, model_combo)
 			dose_response.chart_diamond(model_a, model_b, model_combo)
@@ -242,12 +231,8 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			models_combo_relevant = [model_combo for model_combo in models_combo \
 				if model_combo.cocktail.drugs[0] in pair and model_combo.cocktail.drugs[1] in pair]
 
-			if talk:
-				sns.set_context('talk')
 			dose_response.analyze_checkerboard(model_a, model_b, models_combo_relevant,
 				method='Bliss', file_name_context=plate_info)
-			if talk:
-				sns.set_context('talk')
 			dose_response.chart_checkerboard(model_a, model_b, models_combo_relevant,
 				file_name_context=plate_info)
 
