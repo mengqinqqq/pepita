@@ -65,20 +65,26 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 			annotations[row_idx, col_idx] = f'{result:{hmap_fmt}}\n{label}'
 			responses[row_idx, col_idx] = result
 
-	col_labels = NUMS[1:11] if well_count == 96 else NUMS[0:6] if well_count == 24 else NUMS[0:4]
-	row_labels = list(ALPHA[1:7]) if well_count == 96 else list(ALPHA[0:4]) if well_count == 24 \
-		else list(ALPHA[0:3])
+	plate_height = util.plate_height(well_count)
+	plate_width = well_count // plate_height
 
-	if len(responses) > math.sqrt(well_count): # there must be 2 plates: insert blank line
-		insertable_idx = len(responses) // 2
+	col_labels = NUMS[1:plate_width-1]
+	row_labels = list(ALPHA[1:plate_height-1])
+
+	plates_count_est = math.ceil(len(responses) / plate_height)
+
+	row_labels *= plates_count_est
+
+	for i in range(plates_count_est-1, 0, -1): # insert blank line(s) for any plates > 1
+		insertable_idx = (len(responses) // plates_count_est) * i
 		annotations = np.insert(annotations, insertable_idx, np.full_like(annotations[0], ''),
 			axis=0)
 		responses = np.insert(responses, insertable_idx, np.full_like(responses[0], np.nan), axis=0)
-		row_labels = row_labels[0:insertable_idx] + [''] + row_labels[0:insertable_idx]
+		row_labels = row_labels[0:insertable_idx] + [''] + row_labels[insertable_idx:]
 
 	# make the heatmap
 
-	fig = plt.figure(figsize=(12, 12), dpi=100)
+	fig = plt.figure(figsize=(12, 6 * plates_count_est), dpi=100)
 
 	ax = sns.heatmap(responses,
 		vmin=0, vmax=vmax, cmap=cmap, annot=annotations, fmt='', linewidths=2, square=True,

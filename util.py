@@ -2,6 +2,7 @@ import base64
 import configparser
 import csv
 import hashlib
+import math
 import numpy as np
 import os
 import pickle
@@ -226,6 +227,16 @@ def get_inputs_hashfile(**kwargs):
 		sha1hash.update(pickle.dumps(value))
 	digest = base64.b32encode(sha1hash.digest()).decode('utf-8')
 	return os.path.join(get_config('log_dir'), '.cache', f'.{digest}.json')
+
+def plate_height(well_count):
+	sqrt = int(math.sqrt(well_count))
+
+	for i in range(sqrt, 1, -1):
+		if well_count % i == 0:
+			return i
+
+	print(f'WARNING: proper plate height not found for {well_count}-well plate')
+	return sqrt
 
 def put_multimap(dict_, key, value):
 	list_ = dict_.get(key, [])
