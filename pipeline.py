@@ -19,13 +19,13 @@ import interactions2
 import util
 
 LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
-ABS_MAX = int(util.get_config('absolute_max'))
-ABS_MIN = int(util.get_config('absolute_min'))
+ABS_MAX = int(util.get_config('absolute_max_ototox'))
+ABS_MIN = int(util.get_config('absolute_min_ototox'))
 ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 NUMS = [str(n) for n in range(1, 99)]
 
 def generate_plate_schematic(schematic, results, conversions=None, plate_info='[Unknown]',
-		scale=None, well_count=96):
+		scale=None, well_count=96, cmap='mako', max_val=100):
 
 	results = copy.deepcopy(results) # don't mess with `results`, it's used after this
 
@@ -39,18 +39,16 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 
 	vmax, hmap_fmt, cbar_fmt, cbar_label = \
 		(1, '.0%', PercentFormatter(xmax=1, decimals=0), 'Remaining Hair-Cell Brightness') \
-			if scale is not None else (100, '.0f', None, 'Pipeline Score')
+			if scale is not None else (max_val, '.0f', None, 'Pipeline Score')
 
 	# produce matrix of responses by combining data from `schematic` and `results`
-
-	max_width = 0
 
 	# iterate backwards so as not to mess up indices for subsequent loops
 	for row_idx in reversed(range(len(schematic))):
 		if not schematic[row_idx]:
 			del schematic[row_idx] # remove empty lists or numpy will reject ragged array
-		elif len(schematic[row_idx]) > max_width:
-			max_width = len(schematic[row_idx])
+
+	max_width = max([len(schematic[row_idx]) for row_idx in range(len(schematic))])
 
 	annotations = np.full_like(schematic, '', shape=(len(schematic), max_width))
 	responses = np.full_like(schematic, np.nan, dtype=np.double, shape=(len(schematic), max_width))
@@ -59,10 +57,9 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 		for col_idx in range(len(schematic[row_idx])):
 			solution = util.Solution(schematic[row_idx][col_idx], conversions)
 			result = results[solution].pop(0)
-			label = re.sub(r'([A-Z])([A-Za-z])[A-Za-z]+\s?([\d.A-Za-zμ/]+)?',
+			label = re.sub(r'([A-Z])([A-Za-z])\w+\s?([\d.A-Za-zμ/ ]+)?',
 				lambda match: f'{match.group(1)}{match.group(2).lower()}',
 				schematic[row_idx][col_idx])
-			label = re.sub(r' 0μM', '', label)
 			label = re.sub(r'\s+', '', label)
 			label = re.sub(r'\+', '+\n', label)
 			annotations[row_idx, col_idx] = f'{result:{hmap_fmt}}\n{label}'
@@ -84,7 +81,7 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 	fig = plt.figure(figsize=(12, 12), dpi=100)
 
 	ax = sns.heatmap(responses,
-		vmin=0, vmax=vmax, cmap='mako', annot=annotations, fmt='', linewidths=2, square=True,
+		vmin=0, vmax=vmax, cmap=cmap, annot=annotations, fmt='', linewidths=2, square=True,
 		cbar_kws={
 			'format': cbar_fmt, 'label': cbar_label, 'ticks': [0, vmax],
 		}, xticklabels=col_labels, yticklabels=row_labels)

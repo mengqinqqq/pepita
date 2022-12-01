@@ -231,3 +231,24 @@ def put_multimap(dict_, key, value):
 	list_ = dict_.get(key, [])
 	list_.append(value)
 	dict_[key] = list_
+
+def remove_argument(parser, arg):
+	removed = False
+
+	for action in parser._actions:
+		if (action.option_strings and arg in action.option_strings) or action.dest == arg:
+			parser._remove_action(action)
+			removed = True
+			break
+
+	for action in parser._action_groups:
+		for group_action in action._group_actions:
+			if group_action.dest == arg:
+				action._group_actions.remove(group_action)
+				removed = True
+				break
+
+	return removed
+
+def remove_arguments(parser, *args):
+	return [remove_argument(parser, arg) for arg in args]

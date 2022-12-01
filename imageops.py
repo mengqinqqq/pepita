@@ -128,9 +128,9 @@ def get_size_mask(img, erosions=0, threshold=2**7, lower=0, upper=2**32, verbose
 def invert(img):
 	return np.subtract(_get_bit_depth(img)[1], img)
 
-def read(filename, target_bit_depth, channel=0):
+def read(filename, target_bit_depth, channel=-1):
 	img = imageio.imread(filename)
-	if channel > 0:
+	if channel >= 0:
 		img = img[:,:,channel]
 
 	bit_depth = _get_bit_depth(img)

@@ -13,13 +13,18 @@ import keyence
 import util
 
 replacement_delim = util.get_config('filename_replacement_delimiter')
-replacement_brfld = util.get_config('filename_replacement_brightfield').split(replacement_delim)
-replacement_mask = util.get_config('filename_replacement_mask').split(replacement_delim)
+replacement_brfld = util.get_config('filename_replacement_brightfield_ototox').split(replacement_delim)
+replacement_mask = util.get_config('filename_replacement_mask_ototox').split(replacement_delim)
 
 class Image:
+	channel = 1
+	particles = True
+	replacement_brfld = replacement_brfld
+	replacement_mask = replacement_mask
+
 	def __init__(self, filename, group, debug=0):
 		self.fl_filename = filename
-		self.bf_filename = filename.replace(replacement_brfld[0], replacement_brfld[1])
+		self.bf_filename = filename.replace(self.replacement_brfld[0], self.replacement_brfld[1])
 
 		match = re.search(r'([a-zA-Z0-9]+)_XY([0-9][0-9])_', filename)
 		if not match:
@@ -55,7 +60,7 @@ class Image:
 		if self.fl_img is None:
 			with warnings.catch_warnings():
 				warnings.simplefilter("ignore", UserWarning)
-				self.fl_img = imageops.read(self.fl_filename, np.uint16, 1)
+				self.fl_img = imageops.read(self.fl_filename, np.uint16, self.channel)
 		return self.fl_img
 
 	def get_fl_metadata(self):
@@ -66,13 +71,15 @@ class Image:
 	def get_mask(self):
 		if self.mask is None:
 			self.mask = imageops.get_fish_mask(
-				self.get_bf_img(), self.get_fl_img(), True, self.debug < 1, self.debug >= 2,
-				'{}_XY{:02d}'.format(self.plate, self.xy),
-				self.fl_filename.replace(replacement_mask[0], replacement_mask[1])
+				self.get_bf_img(), self.get_fl_img(), particles=self.particles,
+				silent=self.debug < 1, verbose=self.debug >= 2,
+				v_file_prefix='{}_XY{:02d}'.format(self.plate, self.xy),
+				mask_filename=self.fl_filename.replace(
+					self.replacement_mask[0], self.replacement_mask[1])
 			)
 		return self.mask
 
-	def get_raw_value(self, threshold=0.05):
+	def get_raw_value(self):
 		if self.value is None:
 			fl_img_masked = imageops.apply_mask(self.get_fl_img(), self.get_mask())
 			score = imageops.score(fl_img_masked)
@@ -95,7 +102,7 @@ class Image:
 class UserError(ValueError):
 	pass
 
-def chart(results, chartfile):
+def chart(results, chartfile, scale='linear'):
 	with sns.axes_style(style='whitegrid'):
 		data = pd.DataFrame({
 			'brightness': [value for values in results.values() for value in values],
@@ -104,14 +111,16 @@ def chart(results, chartfile):
 
 		fig = plt.figure(figsize=(12, 8), dpi=100)
 		ax = sns.swarmplot(x='group', y='brightness', data=data)
-		ax.set_ylim(bottom=0)
+		ax.set_yscale(scale)
+		if scale == 'linear':
+			ax.set_ylim(bottom=0)
 		sns.boxplot(x='group', y='brightness', data=data, showbox=False, showcaps=False,
 			showfliers=False, whiskerprops={'visible': False})
 		plt.xticks(rotation=90)
 		plt.tight_layout()
 		plt.savefig(chartfile)
 
-def get_schematic(platefile, target_count, plate_ignore, flat=True):
+def get_schematic(platefile, target_count, plate_ignore=[], flat=True):
 	if not platefile:
 		return keyence.LAYOUT_DEFAULT
 
@@ -128,7 +137,9 @@ def get_schematic(platefile, target_count, plate_ignore, flat=True):
 			del row[0]
 		count = sum([len(row) for row in schematic])
 		if count != target_count:
-			raise UserError('Schematic does not have same number of cells as images provided')
+			raise UserError(
+				f'Schematic does not have same number of cells ({count}) as images provided ' +
+					f'({target_count})')
 
 	return schematic if not flat else [well for row in schematic for well in row]
 
