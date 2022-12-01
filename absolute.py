@@ -10,21 +10,6 @@ import warnings
 
 import analyze
 
-def chart(results, chartfile):
-	with sns.axes_style(style='whitegrid'):
-		data = pd.DataFrame({
-			'brightness': [value for values in results.values() for value in values],
-			'plate': [key for key, values in results.items() for _ in values],
-		})
-
-		ax = sns.swarmplot(x='plate', y='brightness', data=data, size=3)
-		ax.set_ylim(bottom=0)
-		sns.boxplot(x='plate', y='brightness', data=data, showbox=False, showcaps=False,
-			showfliers=False, whiskerprops={'visible': False})
-		plt.xticks(rotation=80)
-		plt.tight_layout()
-		plt.savefig(chartfile)
-
 # from ISO 12232:1998 via https://en.wikipedia.org/wiki/Film_speed#Measurements_and_calculations
 # H = qLt/(N^2)
 # H: luminous exposure (lux-seconds), proportional to pixel value
@@ -83,7 +68,7 @@ def main(imagefiles, cap=-1, chartfile=None, debug=0, group_regex='.*', platefil
 					print(group, np.nanmedian(relevant_values), relevant_values)
 
 	if chartfile:
-		chart(results, chartfile)
+		analyze.chart(results, chartfile)
 
 	return results
 
