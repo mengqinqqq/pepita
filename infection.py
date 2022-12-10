@@ -19,12 +19,14 @@ ABS_MIN = int(util.get_config('absolute_min_infection'))
 replacement_delim = util.get_config('filename_replacement_delimiter')
 replacement_brfld = util.get_config('filename_replacement_brightfield_infection').split(replacement_delim)
 replacement_mask = util.get_config('filename_replacement_mask_infection').split(replacement_delim)
+replacement_subtr = util.get_config('filename_replacement_subtr_infection').split(replacement_delim)
 
 class InfectionImage(analyze.Image):
 	channel = 0
 	particles = False
 	replacement_brfld = replacement_brfld
 	replacement_mask = replacement_mask
+	replacement_subtr = replacement_subtr
 
 	def get_raw_value(self, threshold=0.02):
 		if self.value is None:

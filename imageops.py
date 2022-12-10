@@ -65,9 +65,13 @@ def get_contours_by_area(img, threshold=-1, lower=0, upper=2**32):
 		return np.multiply(contours, np.minimum(areas > lower, areas < upper))# ugly: consider fix
 
 def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_file_prefix='',
-		mask_filename=None):
+		mask_filename=None, subtr_img=[]):
 	show(bf_img, verbose or not silent, v_file_prefix=v_file_prefix)
 	if particles:
+		show(fl_img, verbose or not silent, v_file_prefix=v_file_prefix)
+
+	if subtr_img is not None and len(subtr_img) > 0:
+		fl_img = subtract(fl_img, subtr_img, scale=True)
 		show(fl_img, verbose or not silent, v_file_prefix=v_file_prefix)
 
 	if mask_filename and os.path.isfile(mask_filename):
@@ -165,6 +169,18 @@ def show(img, verbose=True, v_file_prefix=''):
 		unique_str = str(int(time() * 1000) % 1_620_000_000_000)
 		filename = f'{LOG_DIR}/{v_file_prefix}_{unique_str}.png'
 		imageio.imwrite(filename, resize(img, 0.5))
+
+# NOTE: at the moment, it's assumed minuend_image and subtrahend_image have the same bit depth
+def subtract(minuend_image, subtrahend_image, scale=True, threshold=0.005):
+	if scale:
+		threshold_px = _get_bit_depth(minuend_image)[1] * threshold
+		intersection_mask = (minuend_image > threshold_px) & (subtrahend_image > threshold_px)
+		minuend_masked_median = np.median(minuend_image[intersection_mask])
+		subtrahend_masked_median = np.median(subtrahend_image[intersection_mask])
+		scaled_image = subtrahend_image * (minuend_masked_median / subtrahend_masked_median)
+		subtrahend_image = scaled_image.astype(subtrahend_image.dtype)
+	# subtract without underflow
+	return np.where(minuend_image < subtrahend_image, 0, minuend_image - subtrahend_image)
 
 def _aspect_is_between(contour, upper, lower):
 	_, (minor, major), _ = cv.fitEllipse(contour)

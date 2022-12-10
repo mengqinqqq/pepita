@@ -1,6 +1,7 @@
 import argparse
 import csv
 import numpy as np
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import re
@@ -15,16 +16,20 @@ import util
 replacement_delim = util.get_config('filename_replacement_delimiter')
 replacement_brfld = util.get_config('filename_replacement_brightfield_ototox').split(replacement_delim)
 replacement_mask = util.get_config('filename_replacement_mask_ototox').split(replacement_delim)
+replacement_subtr = util.get_config('filename_replacement_subtr_ototox').split(replacement_delim)
 
 class Image:
 	channel = 1
+	channel_subtr = 0
 	particles = True
 	replacement_brfld = replacement_brfld
 	replacement_mask = replacement_mask
+	replacement_subtr = replacement_subtr
 
 	def __init__(self, filename, group, debug=0):
 		self.fl_filename = filename
 		self.bf_filename = filename.replace(self.replacement_brfld[0], self.replacement_brfld[1])
+		self.subtr_filename = filename.replace(self.replacement_subtr[0], self.replacement_subtr[1])
 
 		match = re.search(r'([a-zA-Z0-9]+)_XY([0-9][0-9])_', filename)
 		if not match:
@@ -40,6 +45,7 @@ class Image:
 		self.bf_metadata = None
 		self.fl_img = None
 		self.fl_metadata = None
+		self.subtr_img = None
 		self.mask = None
 		self.normalized_value = None
 		self.value = None
@@ -75,7 +81,8 @@ class Image:
 				silent=self.debug < 1, verbose=self.debug >= 2,
 				v_file_prefix='{}_XY{:02d}'.format(self.plate, self.xy),
 				mask_filename=self.fl_filename.replace(
-					self.replacement_mask[0], self.replacement_mask[1])
+					self.replacement_mask[0], self.replacement_mask[1]),
+				subtr_img=self.get_subtr_img()
 			)
 		return self.mask
 
@@ -85,6 +92,17 @@ class Image:
 			score = imageops.score(fl_img_masked)
 			self.value = score if score > 0 else np.nan
 		return self.value
+
+	def get_subtr_img(self):
+		if self.subtr_img is None:
+			if os.path.isfile(self.subtr_filename):
+				with warnings.catch_warnings():
+					warnings.simplefilter("ignore", UserWarning)
+					self.subtr_img = imageops.read(
+						self.subtr_filename, np.uint16, self.channel_subtr)
+			else:
+				self.subtr_img = []
+		return self.subtr_img
 
 	def normalize(self, control_values, cap):
 		try:
