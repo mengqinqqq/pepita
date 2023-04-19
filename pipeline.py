@@ -57,8 +57,8 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 		for col_idx in range(len(schematic[row_idx])):
 			solution = util.Solution(schematic[row_idx][col_idx], conversions)
 			result = results[solution].pop(0)
-			label = re.sub(r'([A-Z])([A-Za-z])\w+\s?([\d.A-Za-zμ/ ]+)?',
-				lambda match: f'{match.group(1)}{match.group(2).lower()}',
+			label = re.sub(r'([A-Z])([A-Za-z])\w+\s?([\d./]+)?([A-Za-zμ ]+)?',
+				lambda m: f'{m.group(1)}{m.group(2).lower()}{m.group(3) if m.group(3) else ""}',
 				schematic[row_idx][col_idx])
 			label = re.sub(r'\s+', '', label)
 			label = re.sub(r'\+', '+\n', label)
