@@ -13,14 +13,16 @@ import imageops
 import keyence
 import util
 
+channel_main_ototox = int(util.get_config('channel_main_ototox'))
+channel_subtr_ototox = int(util.get_config('channel_subtr_ototox'))
 replacement_delim = util.get_config('filename_replacement_delimiter')
 replacement_brfld = util.get_config('filename_replacement_brightfield_ototox').split(replacement_delim)
 replacement_mask = util.get_config('filename_replacement_mask_ototox').split(replacement_delim)
 replacement_subtr = util.get_config('filename_replacement_subtr_ototox').split(replacement_delim)
 
 class Image:
-	channel = 1
-	channel_subtr = 0
+	channel = channel_main_ototox
+	channel_subtr = channel_subtr_ototox
 	particles = True
 	replacement_brfld = replacement_brfld
 	replacement_mask = replacement_mask

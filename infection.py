@@ -16,13 +16,16 @@ LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
 ABS_MAX = int(util.get_config('absolute_max_infection'))
 ABS_MIN = int(util.get_config('absolute_min_infection'))
 
+channel_main_infection = int(util.get_config('channel_main_infection'))
+channel_subtr_infection = int(util.get_config('channel_subtr_infection'))
 replacement_delim = util.get_config('filename_replacement_delimiter')
 replacement_brfld = util.get_config('filename_replacement_brightfield_infection').split(replacement_delim)
 replacement_mask = util.get_config('filename_replacement_mask_infection').split(replacement_delim)
 replacement_subtr = util.get_config('filename_replacement_subtr_infection').split(replacement_delim)
 
 class InfectionImage(analyze.Image):
-	channel = 0
+	channel = channel_main_infection
+	channel_subtr = channel_subtr_infection
 	particles = False
 	replacement_brfld = replacement_brfld
 	replacement_mask = replacement_mask
