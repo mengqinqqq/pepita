@@ -93,8 +93,14 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 		}, xticklabels=col_labels, yticklabels=row_labels)
 	ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
 
-	suffix1 = '' if scale is None else ', Absolute' if scale[1] > 10_000 else ', Scaled'
-	suffix2 = '' if scale is None else '_absolute' if scale[1] > 10_000 else '_scaled'
+	if max_val < 100:
+		suffix1, suffix2 = ', Log', '_log'
+	elif scale is None:
+		suffix1, suffix2 = '', ''
+	elif scale[1] > 10_000:
+		suffix1, suffix2 = ', Absolute', '_absolute'
+	else:
+		suffix1, suffix2 = ', Scaled', '_scaled'
 
 	plt.title(f'{plate_info} {well_count}-well Plate Schematic{suffix1}')
 	uniq_str = str(int(time() * 1000) % 1_620_000_000_000)
