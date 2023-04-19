@@ -170,7 +170,7 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 	# generate models, dose-response charts
 
 	for cocktail, conditions in drug_conditions.items():
-		if cocktail.drugs == ('Control',):
+		if cocktail in control_drugs:
 			continue
 		cocktail_scores = {}
 		summary_scores = []
