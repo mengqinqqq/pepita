@@ -119,6 +119,18 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 	if talk:
 		sns.set_context('talk')
 
+	conversions = dict(conversions)
+	schematic = analyze.get_schematic(platefile, len(imagefiles), plate_ignore, flat=False)
+
+	if absolute_chart:
+		abs_chartfile = None if chartfile is None else chartfile.replace('.', '_absolute.')
+		results2 = absolute.main(imagefiles, cap=cap, chartfile=abs_chartfile, debug=0,
+			group_regex=group_regex, platefile=platefile, plate_control=plate_control,
+			plate_ignore=plate_ignore, silent=False)
+		results2 = {util.Solution(key, conversions): value for key, value in results2.items()}
+		generate_plate_schematic(schematic, results2, conversions=conversions,
+			plate_info=plate_info, scale=(ABS_MIN, ABS_MAX), well_count=96)
+
 	if chartfile is None and debug == 0 and os.path.exists(hashfile):
 		with open(hashfile, 'r') as f: # read cached results
 			results = json.load(f)
@@ -128,7 +140,6 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		with open(hashfile, 'w') as f: # cache results for reuse
 			json.dump(results, f, ensure_ascii=False)
 
-	conversions = dict(conversions)
 	drug_conditions = _parse_results(results, conversions)
 	control_drugs = [util.Cocktail(util.Dose(control).drug) for control in plate_control]
 	models = {}
@@ -153,19 +164,8 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 
 	# generate plate schematics
 
-	schematic = analyze.get_schematic(platefile, len(imagefiles), plate_ignore, flat=False)
-
 	generate_plate_schematic(schematic, results, conversions=conversions, plate_info=plate_info,
 		scale=(positive_control_value, 100), well_count=96)
-
-	if absolute_chart:
-		abs_chartfile = None if chartfile is None else chartfile.replace('.', '_absolute.')
-		results2 = absolute.main(imagefiles, cap=cap, chartfile=abs_chartfile, debug=0,
-			group_regex=group_regex, platefile=platefile, plate_control=plate_control,
-			plate_ignore=plate_ignore, silent=False)
-		results2 = {util.Solution(key, conversions): value for key, value in results2.items()}
-		generate_plate_schematic(schematic, results2, conversions=conversions,
-			plate_info=plate_info, scale=(ABS_MIN, ABS_MAX), well_count=96)
 
 	# generate models, dose-response charts
 
