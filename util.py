@@ -55,7 +55,7 @@ class Dose:
 		self.ec = False
 		self.string = string
 
-		ec_match = Dose._ec_pattern.match(string)
+		ec_match = Dose._ec_pattern.fullmatch(string)
 
 		if ec_match:
 			self.ec = True
@@ -64,14 +64,14 @@ class Dose:
 			if ec_data in conversions:
 				self.converted = True
 				ec_data = conversions[ec_data]
-			vector_match = Dose._vector_pattern.match(ec_data)
+			vector_match = Dose._vector_pattern.fullmatch(ec_data)
 		elif string in conversions:
-			vector_match = Dose._vector_pattern.match(conversions[string])
+			vector_match = Dose._vector_pattern.fullmatch(conversions[string])
 			self.converted = True
 			self.series = None
 			multiplier, divisor = None, None
 		else:
-			vector_match = Dose._vector_pattern.match(string)
+			vector_match = Dose._vector_pattern.fullmatch(string)
 			self.series = None
 			multiplier, divisor = None, None
 
