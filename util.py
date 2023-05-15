@@ -136,7 +136,7 @@ class Solution:
 	def __init__(self, string, conversions=[]):
 		self.conversions = conversions
 		self.string = string
-		dose_strings = string.split(' + ')
+		dose_strings = [s.strip() for s in string.split('+')]
 		self.doses = [Dose(string, conversions) for string in dose_strings]
 
 	def __eq__(self, other):
@@ -158,7 +158,7 @@ class Solution:
 		return Solution(' + '.join([dose.string for dose in doses]))
 
 	def __repr__(self):
-		return '+'.join(str(dose.quantity) for dose in self.doses)
+		return '+'.join(f'{dose.drug} {dose.quantity}{dose.unit}' for dose in self.doses)
 
 	def __rmul__(self, other):
 		return other * float(self)
