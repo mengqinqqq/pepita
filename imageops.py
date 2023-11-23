@@ -61,9 +61,7 @@ def get_contours_by_area(img, threshold=-1, lower=0, upper=2**32):
 	binarized_img = binarize(img, threshold)
 	contours, _ = cv.findContours(binarized_img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 	areas = np.array([cv.contourArea(contour) for contour in contours])
-	with warnings.catch_warnings():
-		warnings.simplefilter("ignore", np.VisibleDeprecationWarning)
-		return np.multiply(contours, np.minimum(areas > lower, areas < upper))# ugly: consider fix
+	return [contour for contour, area in zip(contours, areas) if area > lower and area < upper]
 
 def get_fish_mask(bf_img, fl_img, particles=True, silent=True, verbose=False, v_file_prefix='',
 		mask_filename=None, subtr_img=[]):
