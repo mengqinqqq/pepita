@@ -225,7 +225,7 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 			total_max_x = max(total_max_x, max_x)
 			total_max_y = max(total_max_y, max_y)
 
-		if models_combo:
+		if models_combo and plot_filename is not None:
 			plt.xlim(right=total_max_x)
 			plt.ylim(top=total_max_y)
 			plt.savefig(plot_filename)

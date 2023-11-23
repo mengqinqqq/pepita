@@ -342,6 +342,10 @@ def analyze_checkerboard(model_a, model_b, models_combo, method='interpolation',
 		raise ValueException('`method` must be one of "interpolation", "Bliss", or "Loewe"')
 
 def analyze_diamond(model_a, model_b, model_combo):
+	if model_a.c is None or model_b.c is None:
+		print('Cannot analyze diamond due to failed dose-response curve fit')
+		return None, 0, 0
+
 	# print significant statistics
 	if model_a.c < model_b.c:
 		model_a, model_b = model_b, model_a
@@ -476,6 +480,10 @@ def chart_checkerboard(model_a, model_b, models_combo, file_name_context=None):
 	plt.clf()
 
 def chart_diamond(model_a, model_b, model_combo):
+	if model_a.c is None or model_b.c is None:
+		print('Cannot chart diamond due to failed dose-response curve fit')
+		return
+
 	# chart A and B on the same axes, with the same x values
 
 	model_b_scaled = Model(np.array(model_b.xs) * model_combo.cocktail.ratio, model_b.ys,
