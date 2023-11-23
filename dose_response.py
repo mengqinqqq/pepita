@@ -36,8 +36,8 @@ class Model:
 					try:
 						popt, _ = scipy.optimize.curve_fit(self.equation, self.xs, self.ys,
 							method=method)
-						err = sum(self.equation(xs, *popt) - ys)
-						fits[err] = popt
+						sse = sum((self.equation(xs, *popt) - ys)**2)
+						fits[sse] = popt
 					except:
 						pass
 				if not fits:
