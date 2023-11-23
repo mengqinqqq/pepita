@@ -138,7 +138,7 @@ def main(imagefiles, cap=-1, chartfile=None, checkerboard=False, conversions=[],
 		results = analyze.main(imagefiles, cap, chartfile, debug, group_regex, platefile,
 			plate_control, plate_ignore, silent=False)
 		with open(hashfile, 'w') as f: # cache results for reuse
-			json.dump(results, f, ensure_ascii=False)
+			json.dump(results, f)
 
 	drug_conditions = _parse_results(results, conversions)
 	control_drugs = [util.Cocktail(util.Dose(control).drug) for control in plate_control]

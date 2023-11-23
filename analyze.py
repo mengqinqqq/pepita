@@ -13,6 +13,10 @@ import imageops
 import keyence
 import util
 
+# for windows consoles (e.g. git bash) to work properly
+sys.stdin.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding='utf-8')
+
 channel_main_ototox = int(util.get_config('channel_main_ototox'))
 channel_subtr_ototox = int(util.get_config('channel_subtr_ototox'))
 replacement_delim = util.get_config('filename_replacement_delimiter')
