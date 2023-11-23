@@ -226,6 +226,7 @@ def get_inputs_hashfile(**kwargs):
 	for value in kwargs.values():
 		sha1hash.update(pickle.dumps(value))
 	digest = base64.b32encode(sha1hash.digest()).decode('utf-8')
+	os.makedirs(os.path.join(get_config('log_dir'), '.cache'), exist_ok=True)
 	return os.path.join(get_config('log_dir'), '.cache', f'.{digest}.json')
 
 def plate_height(well_count):

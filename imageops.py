@@ -12,6 +12,7 @@ import warnings
 import util
 
 LOG_DIR = f'{util.get_config("log_dir")}/imageops'
+os.makedirs(LOG_DIR, exist_ok=True)
 
 def apply_mask(img, mask):# mask should have black background, white foreground
 	img_type = _get_bit_depth(img)

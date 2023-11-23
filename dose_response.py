@@ -1,5 +1,6 @@
 import csv
 import numpy as np
+import os
 import os.path
 import pandas as pd
 from matplotlib.ticker import PercentFormatter
@@ -13,6 +14,7 @@ import warnings
 import util
 
 LOG_DIR = f'{util.get_config("log_dir")}/dose_response'
+os.makedirs(LOG_DIR, exist_ok=True)
 _neo_model = None
 
 class Model:
