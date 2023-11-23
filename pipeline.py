@@ -48,12 +48,13 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 		if not schematic[row_idx]:
 			del schematic[row_idx] # remove empty lists or numpy will reject ragged array
 
-	max_width = max([len(schematic[row_idx]) for row_idx in range(len(schematic))])
+	height = len(schematic)
+	max_width = max([len(schematic[row_idx]) for row_idx in range(height)])
 
-	annotations = np.full_like(schematic, '', shape=(len(schematic), max_width))
-	responses = np.full_like(schematic, np.nan, dtype=np.double, shape=(len(schematic), max_width))
+	annotations = np.full((height, max_width), '')
+	responses = np.full((height, max_width), np.nan, dtype=np.double)
 
-	for row_idx in range(len(schematic)):
+	for row_idx in range(height):
 		for col_idx in range(len(schematic[row_idx])):
 			solution = util.Solution(schematic[row_idx][col_idx], conversions)
 			result = results[solution].pop(0)
