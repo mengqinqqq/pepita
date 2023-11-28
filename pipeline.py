@@ -51,7 +51,7 @@ def generate_plate_schematic(schematic, results, conversions=None, plate_info='[
 	height = len(schematic)
 	max_width = max([len(schematic[row_idx]) for row_idx in range(height)])
 
-	annotations = np.full((height, max_width), '')
+	annotations = np.full((height, max_width), '', dtype=object)
 	responses = np.full((height, max_width), np.nan, dtype=np.double)
 
 	for row_idx in range(height):
