@@ -24,7 +24,7 @@ Configuration is achieved by two main routes: the configuration file and runtime
 
 #### Configuration file
 
-A default configuration file can be found at [config.ini][/config.ini]. This file defines both the available configuration settings and their default values.
+A default configuration file can be found at [config.ini](/config.ini). This file defines both the available configuration settings and their default values.
 
 To override default values, create a file next to the default configuration file, called `config-ext.ini`, and set the desired values within.
 
@@ -144,7 +144,7 @@ Custom masks should conform to the following specification:
 - Of the same format as the microscopy images
 - Having the same resolution as the microscopy images
 - Single channel
-- Areas to exclude are black (0); areas where signal should be processed are white (255)
+- Areas to exclude are black (pixel value is 0); areas where signal should be processed are white (pixel value is 255)
 
 The provided ImageJ scripts can be used to produce these images more easily (see below).
 
