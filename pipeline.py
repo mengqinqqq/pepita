@@ -304,7 +304,7 @@ def _parse_results(results, conversions):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
-		description=('Analyzer for images of whole zebrafish with stained neuromasts, for the '
+		description=('Analyzer for images of whole zebrafish with fluorescent neuromasts, for the '
 			'purposes of measuring hair cell damage under drug-combination conditions. Reports '
 			'values relative to control.'))
 
