@@ -26,7 +26,6 @@ PEPITA-tools contains utilities relevant to the quantification of fluorescent in
 
 |  |  |  |  |  |  |  |  |  |  |  |  |
 | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
-|  |  |  |  |  |  |  |  |  |  |  |  |
 |  | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM |  |
 |  | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM |  |
 |  | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM |  |
