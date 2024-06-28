@@ -38,7 +38,7 @@ PEPITA-tools contains utilities relevant to the quantification of fluorescent in
 7. Run the analysis pipeline with appropriate runtime arguments
 	- See _Runtime arguments_ below for more information.
 
-Alternatively, this pipeline can be run as a notebook in the cloud, e.g., through Google Colab (see _Notebook Execution_ section below). In this case, steps 1-5 are to be done in the context of the notebooks execution environment; see the notebook itself for more information.
+Alternatively, this pipeline can be run as a notebook in the cloud, e.g., through Google Colab (see _Notebook Execution_ section below). In this case, steps 1-5 are to be done in the context of the notebook's execution environment; see the notebook itself for more information.
 
 ## `pipeline.py` and Related Scripts
 
