@@ -4,6 +4,40 @@ PEPITA-tools contains utilities relevant to the quantification of fluorescent in
 - `pipeline.py` and related python scripts, which take such images as input and produce numeric values and plots, and
 - ImageJ macro scripts contained in `ImageJ_scripts/`, which help with the creation of mask files, an optional step in the quantification workflow.
 
+## Usage
+
+1. Clone this repository
+	- Currently this code is not packaged as a proper library, and as such must be downloaded in repository form to properly run.
+2. Install python if not already installed
+	- See https://www.python.org/downloads/ for more information
+3. Ensure script dependencies are installed with `requirements.txt`, like
+	```
+	python -m pip install -r requirements.txt
+	```
+4. Set the `log_dir` setting in the `config-ext.ini` file
+	- Create a new `config-ext.ini` file in the repository directory if one doesn't yet exist.
+	- Set this setting to a location where you have write privileges and where logging information can be conveniently written. If the supplied path does not exist, a new directory will be created.
+5. Prepare image data
+	- Brightfield and fluorescent microscopy images should be saved in a location accessible to this script
+	- If particular images should be excluded, or if any require custom masking, that should be done by creating mask files at this time (see _Custom masking_ below).
+6. Prepare CSV plate template
+	- A plate template must be supplied to provide meaningful labels to the images being analyzed by the system. The pipeline will apply labels to images by matching them up in order from the top left, to the right then down.
+	- An example experiment of a single 96-well plate with untreated controls and increasing doses of drug ABC might look like the following, which would label the first through tenth images as _ABC 0μM_, the 11th through 20th images as _ABC 1μM_, and so on, down to the 51st through 60th images as _ABC 16μM_.
+
+|  |  |  |  |  |  |  |  |  |  |  |  |
+| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+|  |  |  |  |  |  |  |  |  |  |  |  |
+|  | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM | ABC 0μM |  |
+|  | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM | ABC 1μM |  |
+|  | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM | ABC 2μM |  |
+|  | ABC 4μM | ABC 4μM | ABC 4μM | ABC 4μM | ABC 4μM | ABC 4μM | ABC 4μM | ABC 4μM | ABC 4μM | ABC 4μM |  |
+|  | ABC 8μM | ABC 8μM | ABC 8μM | ABC 8μM | ABC 8μM | ABC 8μM | ABC 8μM | ABC 8μM | ABC 8μM | ABC 8μM |  |
+|  | ABC 16μM | ABC 16μM | ABC 16μM | ABC 16μM | ABC 16μM | ABC 16μM | ABC 16μM | ABC 16μM | ABC 16μM | ABC 16μM |  |
+|  |  |  |  |  |  |  |  |  |  |  |  |
+
+7. Run the analysis pipeline with appropriate runtime arguments
+	- See _Runtime arguments_ below for more information.
+
 ## `pipeline.py` and Related Scripts
 
 This utility quantifies fluorescence data via roughly the following steps:
