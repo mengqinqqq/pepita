@@ -347,7 +347,9 @@ if __name__ == '__main__':
 
 	parser.add_argument('--talk',
 		action='store_true',
-		help=('If present, images will be generated with the Seaborn "talk" context.'))
+		help=('If present, images will be generated with the Seaborn "talk" context. Otherwise the '
+			'default "notebook" context will be used. (See '
+			'https://seaborn.pydata.org/generated/seaborn.set_context.html)'))
 
 	analyze.set_arguments(parser)
 
