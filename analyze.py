@@ -14,8 +14,11 @@ import keyence
 import util
 
 # for windows consoles (e.g. git bash) to work properly
-sys.stdin.reconfigure(encoding='utf-8')
-sys.stdout.reconfigure(encoding='utf-8')
+try:
+	sys.stdin.reconfigure(encoding='utf-8')
+	sys.stdout.reconfigure(encoding='utf-8')
+except AttributeError:
+	pass # sys.stdout has been wrapped, but should already support utf-8
 
 channel_main_ototox = int(util.get_config('channel_main_ototox'))
 channel_subtr_ototox = int(util.get_config('channel_subtr_ototox'))
