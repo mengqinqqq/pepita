@@ -189,7 +189,7 @@ Run `python pipeline.py --help` for info on how to execute the pipeline via comm
 
 ### Notebook Execution
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]([https://colab.research.google.com/drive/1xvWS6shA67r3SfRRdQPevpaj7rYRQljN])
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]([https://colab.research.google.com/github/mengqinqqq/pepita/blob/master/modified_interactive_pipeline.ipynb])
 
 ## ImageJ Scripts
 
